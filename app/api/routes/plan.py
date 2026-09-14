@@ -20,6 +20,8 @@ from app.schemas.generated_block import (
 from app.services.priority_engine_v2 import compute_priority_score_v2 as compute_priority_score
 from app.services.optimizer import optimize_schedule, ScheduleRequestTask
 from app.services.explainer import generate_why_explanation
+from app.services.bundling import find_bundle_candidates, find_bundle_candidates_dbscan
+from app.schemas.bundling import BundleCandidatesRequest, BundleCandidatesResponse
 
 router = APIRouter()
 
@@ -282,6 +284,22 @@ def validate_manual_block(req: PlanValidateRequest, db: Session = Depends(get_db
             )
 
     return PlanValidateResponse(valid=True, message="Clear for manual block")
+
+
+@router.post("/bundle-candidates", response_model=BundleCandidatesResponse)
+def get_bundle_candidates(req: BundleCandidatesRequest, method: str = "pairwise"):
+    """
+    Finds candidates for bundling maintenance tasks based on proximity in time.
+    """
+    # Convert request models to list of dicts
+    tasks_dicts = [t.model_dump() for t in req.tasks]
+    
+    if method == "dbscan":
+        bundles = find_bundle_candidates_dbscan(tasks_dicts)
+    else:
+        bundles = find_bundle_candidates(tasks_dicts)
+        
+    return BundleCandidatesResponse(method_used=method, bundles=bundles)
 
 
 def _time_to_minutes(time_str: str) -> int:

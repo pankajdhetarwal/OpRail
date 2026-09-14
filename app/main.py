@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 from app.core.database import create_all_tables
-from app.api.routes import tasks, plan, dashboard, tms, smms, tdms, coa
+from app.api.routes import tasks, plan, dashboard, tms, smms, tdms, coa, visualization
 
 
 @asynccontextmanager
@@ -52,6 +52,7 @@ app.include_router(coa.router,   prefix="/api/coa",   tags=["COA — Train Sched
 app.include_router(tasks.router,     prefix="/api/tasks",     tags=["Maintenance Tasks"])
 app.include_router(plan.router,      prefix="/api/plan",      tags=["Block Planning"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"])
+app.include_router(visualization.router, prefix="/api/visualization", tags=["Visualization"])
 
 
 @app.get("/health", tags=["Health"])
