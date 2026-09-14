@@ -14,7 +14,8 @@ from app.models.block_window import BlockWindow
 from app.models.generated_block import GeneratedBlock
 from app.models.railway_section import RailwaySection
 from app.schemas.generated_block import (
-    GeneratedBlockOut, PlanGenerateRequest, PlanGenerateResponse
+    GeneratedBlockOut, PlanGenerateRequest, PlanGenerateResponse,
+    PlanValidateRequest, PlanValidateResponse
 )
 from app.services.priority_engine_v2 import compute_priority_score_v2 as compute_priority_score
 from app.services.optimizer import optimize_schedule, ScheduleRequestTask
@@ -233,6 +234,54 @@ def get_plan_history(limit: int = 20, db: Session = Depends(get_db)):
         .all()
     )
     return {"total": len(blocks), "blocks": blocks}
+
+
+@router.post("/validate", response_model=PlanValidateResponse)
+def validate_manual_block(req: PlanValidateRequest, db: Session = Depends(get_db)):
+    """
+    Validates if a manually dragged block on the Gantt chart clashes with any real trains.
+    """
+    from app.models.train_schedule import TrainSchedule
+
+    req_start = _time_to_minutes(req.start_time)
+    req_end = _time_to_minutes(req.end_time)
+
+    # Handle overnight blocks (e.g. 23:00 to 02:00)
+    # We will treat this as a wrap-around check.
+    def overlaps(t_start, t_end, r_start, r_end):
+        if r_start <= r_end:
+            # Normal block
+            if t_start <= t_end:
+                return not (t_end <= r_start or t_start >= r_end)
+            else:
+                # Train crosses midnight
+                return not (t_end <= r_start and t_start >= r_end)
+        else:
+            # Block crosses midnight
+            if t_start <= t_end:
+                return not (t_end <= r_start and t_start >= r_end)
+            else:
+                # Both cross midnight, guaranteed overlap
+                return True
+
+    trains = db.query(TrainSchedule).filter(
+        TrainSchedule.section_id == req.section_id,
+        TrainSchedule.schedule_date == req.date
+    ).all()
+
+    for train in trains:
+        t_start = _time_to_minutes(train.entry_time)
+        t_end = _time_to_minutes(train.exit_time)
+        
+        if overlaps(t_start, t_end, req_start, req_end):
+            return PlanValidateResponse(
+                valid=False,
+                conflict_train=f"{train.train_no} {train.train_name}",
+                conflict_time=f"{train.entry_time} - {train.exit_time}",
+                message=f"WARNING: Clashes with {train.train_name}"
+            )
+
+    return PlanValidateResponse(valid=True, message="Clear for manual block")
 
 
 def _time_to_minutes(time_str: str) -> int:

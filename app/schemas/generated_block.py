@@ -34,7 +34,7 @@ class GeneratedBlockOut(BaseModel):
 
 class PlanGenerateResponse(BaseModel):
     run_id: str
-    horizon: str
+    horizon: int
     total_blocks: int
     joint_blocks: int
     total_tasks_scheduled: int
@@ -42,3 +42,17 @@ class PlanGenerateResponse(BaseModel):
     avg_efficiency: float
     asset_availability_pct: float
     blocks: List[GeneratedBlockOut]
+
+
+class PlanValidateRequest(BaseModel):
+    section_id: int
+    date: str
+    start_time: str
+    end_time: str
+
+
+class PlanValidateResponse(BaseModel):
+    valid: bool
+    conflict_train: Optional[str] = None
+    conflict_time: Optional[str] = None
+    message: str
