@@ -16,7 +16,7 @@ from app.models.railway_section import RailwaySection
 from app.schemas.generated_block import (
     GeneratedBlockOut, PlanGenerateRequest, PlanGenerateResponse
 )
-from app.services.priority_engine import compute_priority_score
+from app.services.priority_engine_v2 import compute_priority_score_v2 as compute_priority_score
 from app.services.optimizer import optimize_schedule, ScheduleRequestTask
 from app.services.explainer import generate_why_explanation
 

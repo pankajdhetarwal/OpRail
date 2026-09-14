@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.core.database import get_db
 from app.models.maintenance_task import MaintenanceTask, TaskStatus
 from app.schemas.maintenance_task import MaintenanceTaskList, MaintenanceTaskOut
-from app.services.priority_engine import compute_priority_score
+from app.services.priority_engine_v2 import compute_priority_score_v2, get_shap_explanation
 
 router = APIRouter()
 
@@ -70,16 +70,56 @@ def get_task(task_id: int, db: Session = Depends(get_db)):
 
 @router.post("/score-all")
 def score_all_tasks(db: Session = Depends(get_db)):
-    """Recompute priority scores for all tasks using the priority engine."""
+    """Recompute priority scores for all tasks using the V2 XGBoost priority engine."""
     tasks = db.query(MaintenanceTask).options(joinedload(MaintenanceTask.section)).all()
     updated = 0
     for task in tasks:
-        score = compute_priority_score(
+        score = compute_priority_score_v2(
             severity=task.severity,
             days_overdue=task.days_overdue,
             train_density=task.section.train_density if task.section else 0.5,
+            asset_criticality=task.section.criticality_level if task.section else 3,
+            is_safety_critical=task.safety_critical,
+            requires_ohe_disconnection=task.requires_ohe_disconnection,
+            duration_minutes=task.duration_minutes,
         )
         task.priority_score = score
         updated += 1
     db.commit()
-    return {"updated": updated, "message": "Priority scores recomputed successfully"}
+    return {"updated": updated, "message": "Priority scores recomputed using XGBoost V2 engine"}
+
+
+@router.get("/explain/{task_id}")
+def explain_task_priority(task_id: int, db: Session = Depends(get_db)):
+    """
+    Return a SHAP-based explanation of why a task has its priority score.
+    Used by the 'Why this priority?' panel in the frontend.
+    """
+    from fastapi import HTTPException
+    task = (
+        db.query(MaintenanceTask)
+        .options(joinedload(MaintenanceTask.section), joinedload(MaintenanceTask.department))
+        .filter(MaintenanceTask.id == task_id)
+        .first()
+    )
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    shap_data = get_shap_explanation(
+        severity=task.severity,
+        days_overdue=task.days_overdue,
+        train_density=task.section.train_density if task.section else 0.5,
+        asset_criticality=task.section.criticality_level if task.section else 3,
+        is_safety_critical=task.safety_critical,
+        requires_ohe_disconnection=task.requires_ohe_disconnection,
+        duration_minutes=task.duration_minutes,
+    )
+
+    return {
+        "task_id": task_id,
+        "task_code": task.task_code,
+        "priority_score": task.priority_score,
+        "section": task.section.name if task.section else None,
+        "department": task.department.name if task.department else None,
+        "shap_explanation": shap_data,
+    }

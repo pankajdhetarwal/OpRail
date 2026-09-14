@@ -75,6 +75,12 @@ async function fetchTopTasks() {
                 <td><strong>${task.priority_score.toFixed(1)}</strong></td>
                 <td>${statusBadge}</td>
             `;
+            
+            // Add click listener for SHAP explanations
+            row.style.cursor = 'pointer';
+            row.title = "Click to see AI Priority explanation";
+            row.onclick = () => fetchTaskExplanation(task.id);
+            
             tbody.appendChild(row);
         });
         
@@ -127,6 +133,35 @@ async function generatePlan() {
         btn.innerHTML = `<i data-lucide="cpu"></i> Run OR-Tools Optimizer`;
         btn.disabled = false;
         lucide.createIcons();
+    }
+}
+
+async function fetchTaskExplanation(taskId) {
+    try {
+        const response = await fetch(`/api/tasks/explain/${taskId}`);
+        const data = await response.json();
+        
+        let msg = `AI Priority Score: ${data.priority_score.toFixed(1)}\n`;
+        msg += `Task: ${data.task_code} (${data.department})\n\n`;
+        msg += `SHAP Feature Contributions:\n`;
+        
+        const shap = data.shap_explanation.shap_values;
+        if (shap) {
+            // Sort by absolute impact
+            const entries = Object.entries(shap).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
+            for (const [feat, val] of entries) {
+                if (Math.abs(val) > 0.1) {
+                    const sign = val > 0 ? '+' : '';
+                    msg += `  ${feat}: ${sign}${val.toFixed(2)}\n`;
+                }
+            }
+        } else {
+            msg += `  (Using V1 fallback formula)\n`;
+        }
+        
+        alert(msg);
+    } catch (error) {
+        console.error("Error fetching explanation:", error);
     }
 }
 

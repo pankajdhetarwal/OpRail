@@ -31,9 +31,9 @@ def _load_model() -> Optional[dict]:
     if os.path.exists(abs_path):
         with open(abs_path, "rb") as f:
             _model_artifact = pickle.load(f)
-        print(f"✅ XGBoost priority model loaded from {abs_path}")
+        print(f"[OK] XGBoost priority model loaded from {abs_path}")
     else:
-        print(f"⚠️  XGBoost model not found at {abs_path} — using V1 formula fallback")
+        print(f"[WARN] XGBoost model not found at {abs_path} -- using V1 formula fallback")
     return _model_artifact
 
 
