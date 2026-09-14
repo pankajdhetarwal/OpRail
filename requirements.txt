@@ -1,0 +1,36 @@
+# OpRail — AI-Powered Block Planning System (SIH 2026, PS-26027)
+# Core framework
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+
+# Database
+sqlalchemy==2.0.35
+psycopg2-binary==2.9.9
+alembic==1.13.3
+
+# Validation / settings
+pydantic==2.9.2
+pydantic-settings==2.5.2
+python-dotenv==1.0.1
+
+# Optimization
+ortools==9.10.4067
+
+# ML / Data
+pandas==2.2.3
+scikit-learn==1.5.2
+xgboost==2.1.1
+shap==0.46.0
+numpy==1.26.4
+joblib==1.4.2
+
+# HTTP client (for Gemini API calls)
+httpx==0.27.2
+google-generativeai==0.8.3
+
+# Testing
+pytest==8.3.3
+httpx  # also used by TestClient
+
+# Data generation
+faker==30.3.0

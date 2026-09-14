@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpRail | Automatic Block Planning</title>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <i data-lucide="train"></i>
+                <span>OpRail</span>
+            </div>
+            <nav class="nav-menu">
+                <a href="#" class="nav-item active"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+                <a href="#" class="nav-item"><i data-lucide="wrench"></i> TMS (Eng)</a>
+                <a href="#" class="nav-item"><i data-lucide="radio-tower"></i> SMMS (S&T)</a>
+                <a href="#" class="nav-item"><i data-lucide="zap"></i> TDMS (OHE)</a>
+                <a href="#" class="nav-item"><i data-lucide="calendar-clock"></i> COA (Schedule)</a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="data-credibility">
+                    <h5>Data Credibility</h5>
+                    <p>Parameters grounded in CAG Report No. 22/2022 findings.</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-header">
+                <div>
+                    <h1>Block Planning Dashboard</h1>
+                    <p class="subtitle">AI-Powered multi-department maintenance scheduling</p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-outline" id="refresh-btn"><i data-lucide="refresh-cw"></i> Refresh</button>
+                </div>
+            </header>
+
+            <!-- KPI Cards -->
+            <section class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-header">
+                        <h3>Asset Availability</h3>
+                        <i data-lucide="activity" class="text-green"></i>
+                    </div>
+                    <div class="kpi-value" id="kpi-availability">--%</div>
+                    <p class="kpi-trend">+2.1% from last week</p>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-header">
+                        <h3>Total Pending Tasks</h3>
+                        <i data-lucide="clipboard-list" class="text-blue"></i>
+                    </div>
+                    <div class="kpi-value" id="kpi-total-tasks">--</div>
+                    <p class="kpi-trend">Across all departments</p>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-header">
+                        <h3>Critical Safety Tasks</h3>
+                        <i data-lucide="alert-triangle" class="text-red"></i>
+                    </div>
+                    <div class="kpi-value" id="kpi-critical">--</div>
+                    <p class="kpi-trend">Requires immediate action</p>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-header">
+                        <h3>Joint Blocks Today</h3>
+                        <i data-lucide="git-merge" class="text-purple"></i>
+                    </div>
+                    <div class="kpi-value" id="kpi-joint">--</div>
+                    <p class="kpi-trend">Multi-dept coordination</p>
+                </div>
+            </section>
+
+            <div class="content-grid">
+                <!-- Left Column: Tasks & Generation -->
+                <div class="col-left">
+                    <div class="card panel">
+                        <div class="panel-header">
+                            <h2>Generate Block Plan</h2>
+                        </div>
+                        <div class="panel-body generate-panel">
+                            <div class="input-group">
+                                <label>Start Date</label>
+                                <input type="date" id="plan-start" />
+                            </div>
+                            <div class="input-group">
+                                <label>End Date</label>
+                                <input type="date" id="plan-end" />
+                            </div>
+                            <button id="btn-generate" class="btn btn-primary w-full">
+                                <i data-lucide="cpu"></i> Run OR-Tools Optimizer
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card panel mt-4">
+                        <div class="panel-header">
+                            <h2>Top Priority Tasks</h2>
+                            <span class="badge">AI Scored</span>
+                        </div>
+                        <div class="panel-body p-0">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Type</th>
+                                        <th>Score</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tasks-tbody">
+                                    <tr><td colspan="4" class="text-center">Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Gantt & Explanations -->
+                <div class="col-right">
+                    <div class="card panel h-full">
+                        <div class="panel-header">
+                            <h2>Generated Schedule</h2>
+                            <div id="plan-stats" class="plan-stats hidden">
+                                <span class="badge bg-green"><i data-lucide="check-circle"></i> Feasible</span>
+                            </div>
+                        </div>
+                        <div class="panel-body">
+                            <div id="empty-state" class="empty-state">
+                                <i data-lucide="calendar"></i>
+                                <p>Select dates and run optimizer to generate a plan</p>
+                            </div>
+                            
+                            <div id="results-container" class="hidden">
+                                <!-- Chart.js Canvas -->
+                                <div class="chart-container">
+                                    <canvas id="ganttChart"></canvas>
+                                </div>
+                                
+                                <!-- AI Explanations -->
+                                <div class="explanations mt-4">
+                                    <h3>Why this schedule?</h3>
+                                    <div id="explanation-list" class="explanation-list"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Main Logic -->
+    <script src="/static/script.js"></script>
+</body>
+</html>

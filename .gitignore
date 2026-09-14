@@ -1,0 +1,65 @@
+# OpRail — .gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+*.so
+
+# Virtual environments
+venv/
+.venv/
+env/
+.env/
+
+# Environment files (NEVER commit real credentials)
+.env
+!.env.example
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Trained ML models (large binary files)
+models/*.pkl
+models/*.joblib
+models/*.h5
+!models/.gitkeep
+
+# Raw data CSVs
+data/raw/*.csv
+data/raw/*.xlsx
+!data/raw/.gitkeep
+
+# Logs
+*.log
+logs/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing / coverage
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# Node (for frontend)
+node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
