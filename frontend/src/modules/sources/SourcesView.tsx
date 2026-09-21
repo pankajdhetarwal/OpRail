@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { api } from '../../core/api/client'
 import type { BlockWindow, Task, TrainSchedule } from '../../types/api'
 import { Badge, EmptyState, ErrorState, LoadingState, Panel } from '../../components/common'
@@ -28,7 +28,7 @@ export function SourcesView({ activeTab }: { activeTab?: SourceTab }) {
     if (activeTab) setTab(activeTab)
   }, [activeTab])
 
-  const loadTasks = async () => {
+  const loadTasks = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
@@ -50,9 +50,9 @@ export function SourcesView({ activeTab }: { activeTab?: SourceTab }) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [criticalOnly, oheOnly, severity, tab])
 
-  const loadCoa = async () => {
+  const loadCoa = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
@@ -70,7 +70,7 @@ export function SourcesView({ activeTab }: { activeTab?: SourceTab }) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [date, sectionId, windowDate])
 
   useEffect(() => {
     if (tab === 'COA') {
@@ -78,7 +78,7 @@ export function SourcesView({ activeTab }: { activeTab?: SourceTab }) {
       return
     }
     void loadTasks()
-  }, [tab])
+  }, [loadCoa, loadTasks, tab])
 
   return (
     <div className="space-y-4">

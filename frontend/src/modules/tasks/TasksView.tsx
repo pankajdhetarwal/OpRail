@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { api } from '../../core/api/client'
 import type { Task } from '../../types/api'
@@ -19,7 +19,7 @@ export function TasksView() {
   const [rescoring, setRescoring] = useState(false)
   const [feedback, setFeedback] = useState('')
 
-  const load = () => {
+  const load = useCallback(() => {
     setLoading(true)
     setError('')
     api
@@ -30,11 +30,11 @@ export function TasksView() {
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
-  }
+  }, [filters, page])
 
   useEffect(() => {
     load()
-  }, [page, filters])
+  }, [load])
 
   const explainTask = async (task: Task) => {
     setSelected(task)

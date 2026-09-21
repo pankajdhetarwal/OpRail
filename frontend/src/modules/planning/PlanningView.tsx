@@ -10,9 +10,11 @@ const horizons = [
   { label: 'Fortnight', value: 'fortnight' },
 ]
 
+const formatDate = (date: Date) => date.toISOString().slice(0, 10)
+
 export function PlanningView() {
-  const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10))
-  const [endDate, setEndDate] = useState(new Date(Date.now() + 6 * 86400000).toISOString().slice(0, 10))
+  const [startDate, setStartDate] = useState(() => formatDate(new Date()))
+  const [endDate, setEndDate] = useState(() => formatDate(new Date(Date.now() + 6 * 86400000)))
   const [horizon, setHorizon] = useState('week')
   const [density, setDensity] = useState(1)
   const [depts, setDepts] = useState<string[]>(['ENG', 'ST', 'OHE'])
