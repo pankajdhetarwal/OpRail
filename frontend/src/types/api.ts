@@ -43,6 +43,7 @@ export interface Task {
   requires_ohe_disconnection: boolean
   priority_score: number
   status: string
+  created_at: string
   department: { id: number; code: string; name: string; color_hex: string }
   section: { id: number; code: string; name: string; criticality_level: number }
 }
