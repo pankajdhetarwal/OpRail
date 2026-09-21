@@ -10,7 +10,12 @@ export interface DashboardKPIs {
   joint_blocks_today: number
   active_conflicts: number
   avg_block_efficiency: number
-  availability_trend: { date: string; availability: number }[]
+
+  availability_trend: {
+    date: string
+    availability: number
+  }[]
+
   dept_stats: {
     code: string
     name: string
@@ -20,6 +25,7 @@ export interface DashboardKPIs {
     scheduled_tasks: number
     color_hex: string
   }[]
+
   section_statuses: {
     section_code: string
     section_name: string
@@ -44,8 +50,20 @@ export interface Task {
   priority_score: number
   status: string
   created_at: string
-  department: { id: number; code: string; name: string; color_hex: string }
-  section: { id: number; code: string; name: string; criticality_level: number }
+
+  department: {
+    id: number
+    code: string
+    name: string
+    color_hex: string
+  }
+
+  section: {
+    id: number
+    code: string
+    name: string
+    criticality_level: number
+  }
 }
 
 export interface TaskListResponse {
@@ -69,11 +87,18 @@ export interface PlanBlock {
   total_priority_score: number
   why_explanation?: string
   run_id?: string
+  horizon?: string
+  created_at?: string
 }
 
 export interface PlanGenerateResponse {
   run_id: string
-  horizon: string
+
+  // Backend response model expects an integer.
+  // Weekly request ("7") becomes 7.
+  // Monthly request ("30") becomes 30.
+  horizon: number
+
   total_blocks: number
   joint_blocks: number
   total_tasks_scheduled: number
@@ -135,8 +160,12 @@ export interface BlockWindow {
 export interface TimeSpaceResponse {
   trains: {
     train_number: string
-    points: { station: string; minute: number }[]
+    points: {
+      station: string
+      minute: number
+    }[]
   }[]
+
   blocks: {
     start_station: string
     end_station: string
