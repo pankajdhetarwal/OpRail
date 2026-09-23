@@ -15,7 +15,7 @@ function App() {
 
   const content = useMemo(() => {
     if (view.startsWith('overview')) {
-      return <DashboardView />
+      return <DashboardView navigate={setView} />
     }
 
     if (view === 'planning-generator') {

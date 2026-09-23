@@ -8,8 +8,6 @@ import {
   History,
   LayoutDashboard,
   Menu,
-  PanelLeftClose,
-  PanelLeftOpen,
   RefreshCw,
   Route,
   SearchCheck,
@@ -367,29 +365,13 @@ export function AppShell({
 }) {
   const online = useHealth()
 
-  const [collapsed, setCollapsed] =
-    useState(
-      () =>
-        localStorage.getItem(
-          'oprail.sidebar.collapsed',
-        ) === 'true',
-    )
-
-  const [mobileOpen, setMobileOpen] =
-    useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const [now, setNow] = useState(
     () => new Date(),
   )
 
   const page = labels[view]
-
-  useEffect(() => {
-    localStorage.setItem(
-      'oprail.sidebar.collapsed',
-      String(collapsed),
-    )
-  }, [collapsed])
 
   useEffect(() => {
     const timer = window.setInterval(
@@ -403,46 +385,9 @@ export function AppShell({
 
   return (
     <div className="oprail-app">
-      <aside
-        className={`shell-sidebar ${
-          collapsed ? 'is-collapsed' : ''
-        }`}
-      >
-        <Sidebar
-          collapsed={collapsed}
-          view={view}
-          setView={setView}
-        />
-
-        <button
-          className="shell-collapse-button"
-          type="button"
-          onClick={() =>
-            setCollapsed(
-              (value) => !value,
-            )
-          }
-          aria-label={
-            collapsed
-              ? 'Expand sidebar'
-              : 'Collapse sidebar'
-          }
-          title={
-            collapsed
-              ? 'Expand sidebar'
-              : 'Collapse sidebar'
-          }
-        >
-          {collapsed ? (
-            <PanelLeftOpen className="h-4 w-4" />
-          ) : (
-            <PanelLeftClose className="h-4 w-4" />
-          )}
-        </button>
-      </aside>
 
       <AnimatePresence>
-        {mobileOpen ? (
+        {sidebarOpen ? (
           <>
             <motion.button
               className="shell-drawer-backdrop"
@@ -452,7 +397,7 @@ export function AppShell({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() =>
-                setMobileOpen(false)
+                setSidebarOpen(false)
               }
             />
 
@@ -467,7 +412,7 @@ export function AppShell({
                 className="shell-drawer-close"
                 type="button"
                 onClick={() =>
-                  setMobileOpen(false)
+                  setSidebarOpen(false)
                 }
                 aria-label="Close navigation"
               >
@@ -479,7 +424,7 @@ export function AppShell({
                 view={view}
                 setView={setView}
                 closeMobile={() =>
-                  setMobileOpen(false)
+                  setSidebarOpen(false)
                 }
               />
             </motion.aside>
@@ -491,13 +436,14 @@ export function AppShell({
         <header className="shell-topbar">
           <div className="flex min-w-0 items-center gap-3">
             <button
-              className="shell-icon-button md:hidden"
+              className="shell-icon-button"
               type="button"
               onClick={() =>
-                setMobileOpen(true)
+                setSidebarOpen((prev) => !prev)
               }
-              aria-label="Open navigation"
-              title="Open navigation"
+              aria-expanded={sidebarOpen}
+              aria-label={sidebarOpen ? "Close navigation" : "Open navigation"}
+              title={sidebarOpen ? "Close navigation" : "Open navigation"}
             >
               <Menu className="h-5 w-5" />
             </button>
