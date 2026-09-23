@@ -1,56 +1,89 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+/**
+ * PlanningView.tsx — Mission 8: Planning Generator
+ *
+ * Full planning workspace with step-by-step workflow:
+ *   1. Select planning context
+ *   2. Review eligible tasks
+ *   3. Generate plan
+ *   4. Analyse blocks / task relationships
+ *   5. Review operational impact / COA context
+ */
+
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
 import {
   AlertTriangle,
+  Calendar,
   CheckCircle2,
-  ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Clock3,
   Database,
+  Filter,
   Layers3,
   Loader2,
   RefreshCw,
   Route,
   ShieldAlert,
+  ShieldCheck,
+  SquareStack,
   TrainFront,
   XCircle,
+  Zap,
 } from 'lucide-react'
 import { api } from '../../core/api/client'
 import type {
   BlockWindow,
-  BundleCandidate,
   PlanBlock,
   PlanGenerateResponse,
-  PlanHistoryResponse,
   Task,
   TrainSchedule,
 } from '../../types/api'
-import { EmptyState, OperationalStatus, Panel } from '../../components/common'
+import { EmptyState, Panel } from '../../components/common'
 import { deptAccent, toMinutes } from '../../utils/format'
 
-const horizons = [
-  { label: 'Weekly', value: '7' },
-  { label: 'Monthly', value: '30' },
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const HORIZONS = [
+  { label: 'Weekly (7 days)', value: '7' },
+  { label: 'Monthly (30 days)', value: '30' },
 ]
 
-const departments = [
-  { code: 'ENG', label: 'Engineering' },
-  { code: 'ST', label: 'Signal & Telecom' },
-  { code: 'OHE', label: 'Traction / OHE' },
+const DEPARTMENTS = [
+  { code: 'ENG', label: 'Engineering', color: 'var(--warning)' },
+  { code: 'ST', label: 'Signal & Telecom', color: '#b89bd4' },
+  { code: 'OHE', label: 'Traction / OHE', color: 'var(--active)' },
 ]
 
-const formatDate = (date: Date) => date.toISOString().slice(0, 10)
+const formatDate = (d: Date) => d.toISOString().slice(0, 10)
 
-const clockMinutes = (value: string) => {
-  const [hours, minutes] = value.split(':').map(Number)
-  return hours * 60 + minutes
+const displayDate = (value: string) =>
+  new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(
+    new Date(`${value}T00:00:00`),
+  )
+
+const clockMinutes = (v: string) => {
+  const [h, m] = v.split(':').map(Number)
+  return h * 60 + m
 }
 
 const intervalEnd = (start: number, end: number) =>
   end < start ? end + 1440 : end
 
-const displayDate = (value: string) =>
-  new Intl.DateTimeFormat(undefined, {
-    dateStyle: 'medium',
-  }).format(new Date(`${value}T00:00:00`))
+// ─── Priority helpers ─────────────────────────────────────────────────────────
+
+function priorityTier(score: number): { label: string; cls: string } {
+  if (score >= 75) return { label: 'CRITICAL', cls: 'is-critical' }
+  if (score >= 55) return { label: 'HIGH', cls: 'is-high' }
+  if (score >= 35) return { label: 'MEDIUM', cls: 'is-medium' }
+  return { label: 'LOW', cls: 'is-low' }
+}
+
+// ─── Timeline component ───────────────────────────────────────────────────────
 
 function Timeline({
   blocks,
@@ -66,92 +99,64 @@ function Timeline({
   onSelect: (id: number) => void
 }) {
   const allTimes = [
-    ...blocks.flatMap((block) => {
-      const start = toMinutes(block.start_time)
-      return [
-        start,
-        intervalEnd(start, toMinutes(block.end_time)),
-      ]
+    ...blocks.flatMap((b) => {
+      const s = toMinutes(b.start_time)
+      return [s, intervalEnd(s, toMinutes(b.end_time))]
     }),
-    ...trains.flatMap((train) => {
-      const start = clockMinutes(train.entry_time)
-      return [
-        start,
-        intervalEnd(start, clockMinutes(train.exit_time)),
-      ]
+    ...trains.flatMap((t) => {
+      const s = clockMinutes(t.entry_time)
+      return [s, intervalEnd(s, clockMinutes(t.exit_time))]
     }),
-    ...windows.flatMap((window) => {
-      const start = clockMinutes(window.start_time)
-      return [
-        start,
-        intervalEnd(start, clockMinutes(window.end_time)),
-      ]
+    ...windows.flatMap((w) => {
+      const s = clockMinutes(w.start_time)
+      return [s, intervalEnd(s, clockMinutes(w.end_time))]
     }),
   ]
 
   const firstMinute =
     allTimes.length > 0
-      ? Math.max(
-          0,
-          Math.floor((Math.min(...allTimes) - 60) / 60) * 60,
-        )
+      ? Math.max(0, Math.floor((Math.min(...allTimes) - 60) / 60) * 60)
       : 0
-
   const lastMinute =
     allTimes.length > 0
-      ? Math.min(
-          24 * 60,
-          Math.ceil((Math.max(...allTimes) + 60) / 60) * 60,
-        )
+      ? Math.min(24 * 60, Math.ceil((Math.max(...allTimes) + 60) / 60) * 60)
       : 24 * 60
 
   const span = Math.max(240, lastMinute - firstMinute)
 
   const ticks = Array.from(
     { length: Math.floor(span / 60) + 1 },
-    (_, index) => firstMinute + index * 60,
+    (_, i) => firstMinute + i * 60,
   )
 
   const laneNames = [
     ...new Set([
-      ...trains.map((train) => `TRAIN ${train.train_no}`),
-      ...blocks.map((block) => block.section_code),
+      ...trains.map((t) => `TRAIN ${t.train_no}`),
+      ...blocks.map((b) => b.section_code),
     ]),
   ]
 
-  const position = (minute: number) =>
-    `${Math.max(
-      0,
-      Math.min(100, ((minute - firstMinute) / span) * 100),
-    )}%`
+  const pos = (m: number) =>
+    `${Math.max(0, Math.min(100, ((m - firstMinute) / span) * 100))}%`
 
-  const width = (start: number, end: number) =>
-    `${Math.max(
-      2,
-      ((intervalEnd(start, end) - start) / span) * 100,
-    )}%`
+  const w = (s: number, e: number) =>
+    `${Math.max(2, ((intervalEnd(s, e) - s) / span) * 100)}%`
 
   return (
     <div
       className="planning-timeline"
-      aria-label="Generated maintenance blocks and timetable context"
+      aria-label="Generated maintenance blocks and timetable"
     >
       <div className="planning-timeline-scroll">
         <div
           className="timeline-canvas"
-          style={{
-            minWidth: `${Math.max(860, ticks.length * 116)}px`,
-          }}
+          style={{ minWidth: `${Math.max(860, ticks.length * 116)}px` }}
         >
           <div className="timeline-axis">
             <div className="timeline-lane-label">TIME / LANE</div>
-
             <div className="timeline-axis-track">
               {ticks.map((tick) => (
-                <span
-                  key={tick}
-                  style={{ left: position(tick) }}
-                >
+                <span key={tick} style={{ left: pos(tick) }}>
                   {`${String(Math.floor(tick / 60)).padStart(2, '0')}:00`}
                 </span>
               ))}
@@ -164,101 +169,78 @@ function Timeline({
             laneNames.map((lane) => (
               <div className="timeline-row" key={lane}>
                 <div className="timeline-lane-label">{lane}</div>
-
                 <div className="timeline-track">
                   {ticks.map((tick) => (
                     <i
                       className="timeline-gridline"
                       key={tick}
-                      style={{ left: position(tick) }}
+                      style={{ left: pos(tick) }}
                     />
                   ))}
 
                   {trains
-                    .filter(
-                      (train) =>
-                        `TRAIN ${train.train_no}` === lane,
-                    )
-                    .map((train) => (
+                    .filter((t) => `TRAIN ${t.train_no}` === lane)
+                    .map((t) => (
                       <div
                         className="train-bar"
-                        key={train.id}
+                        key={t.id}
                         style={{
-                          left: position(
-                            clockMinutes(train.entry_time),
-                          ),
-                          width: width(
-                            clockMinutes(train.entry_time),
-                            clockMinutes(train.exit_time),
+                          left: pos(clockMinutes(t.entry_time)),
+                          width: w(
+                            clockMinutes(t.entry_time),
+                            clockMinutes(t.exit_time),
                           ),
                         }}
-                        title={`${train.train_no} ${
-                          train.train_name || ''
-                        } · ${train.entry_time}-${train.exit_time}`}
+                        title={`${t.train_no} ${t.train_name ?? ''} · ${t.entry_time}–${t.exit_time}`}
                       >
-                        <TrainFront
-                          className="h-3 w-3"
-                          aria-hidden="true"
-                        />
-                        {train.train_no}
+                        <TrainFront className="h-3 w-3" aria-hidden="true" />
+                        {t.train_no}
                       </div>
                     ))}
 
                   {windows
-                    .filter((window) =>
+                    .filter((wnd) =>
                       blocks.some(
-                        (block) =>
-                          block.section_code === lane &&
-                          block.section_id === window.section_id,
+                        (b) =>
+                          b.section_code === lane &&
+                          b.section_id === wnd.section_id,
                       ),
                     )
-                    .map((window) => (
+                    .map((wnd) => (
                       <span
                         className="window-band"
-                        key={window.id}
+                        key={wnd.id}
                         style={{
-                          left: position(
-                            clockMinutes(window.start_time),
-                          ),
-                          width: width(
-                            clockMinutes(window.start_time),
-                            clockMinutes(window.end_time),
+                          left: pos(clockMinutes(wnd.start_time)),
+                          width: w(
+                            clockMinutes(wnd.start_time),
+                            clockMinutes(wnd.end_time),
                           ),
                         }}
-                        title={`Available window · ${window.start_time}-${window.end_time} · ${window.duration_minutes} minutes`}
+                        title={`Available window · ${wnd.start_time}–${wnd.end_time} · ${wnd.duration_minutes} min`}
                       />
                     ))}
 
                   {blocks
-                    .filter(
-                      (block) => block.section_code === lane,
-                    )
-                    .map((block) => (
+                    .filter((b) => b.section_code === lane)
+                    .map((b) => (
                       <button
-                        className={`timeline-block ${
-                          selectedId === block.id
-                            ? 'is-selected'
-                            : ''
-                        }`}
-                        key={block.id}
+                        className={`timeline-block ${selectedId === b.id ? 'is-selected' : ''}`}
+                        key={b.id}
                         type="button"
                         style={{
-                          left: position(
-                            toMinutes(block.start_time),
-                          ),
-                          width: width(
-                            toMinutes(block.start_time),
-                            toMinutes(block.end_time),
+                          left: pos(toMinutes(b.start_time)),
+                          width: w(
+                            toMinutes(b.start_time),
+                            toMinutes(b.end_time),
                           ),
                         }}
-                        onClick={() => onSelect(block.id)}
-                        title={`${block.section_code}: ${block.start_time}-${block.end_time}`}
+                        onClick={() => onSelect(b.id)}
+                        title={`${b.section_code}: ${b.start_time}–${b.end_time}`}
                       >
-                        <span>
-                          {block.departments_involved.join(' / ')}
-                        </span>
+                        <span>{b.departments_involved.join(' / ')}</span>
                         <b>
-                          {block.start_time}-{block.end_time}
+                          {b.start_time}–{b.end_time}
                         </b>
                       </button>
                     ))}
@@ -274,12 +256,10 @@ function Timeline({
           <i className="legend-swatch is-train" />
           Train movement
         </span>
-
         <span>
           <i className="legend-swatch is-block" />
           Maintenance block
         </span>
-
         <span>
           <i className="legend-swatch is-window" />
           Available COA window
@@ -289,319 +269,477 @@ function Timeline({
   )
 }
 
-function BlockDetails({
-  block,
+// ─── Task eligibility row ─────────────────────────────────────────────────────
+
+function TaskEligibilityRow({
+  task,
+  inPlan,
+  blockId,
 }: {
-  block: PlanBlock | undefined
+  task: Task
+  inPlan: boolean
+  blockId?: number
 }) {
-  if (!block) {
-    return (
-      <EmptyState label="Select a block to inspect its operational details." />
-    )
-  }
+  const tier = priorityTier(task.priority_score)
 
   return (
-    <div className="block-details">
-      <div className="block-detail-heading">
-        <div>
-          <p className="shell-eyebrow">
-            Selected block / {block.id}
-          </p>
+    <div
+      className={`pgv-task-row ${inPlan ? 'is-scheduled' : ''}`}
+      aria-label={`Task ${task.task_code}`}
+    >
+      <div className="pgv-task-code-col">
+        <span className="task-code">{task.task_code}</span>
+        <span className="pgv-task-type">{task.task_type}</span>
+      </div>
 
-          <h3>
-            {block.section_code} · {block.section_name}
-          </h3>
+      <div className="pgv-task-section-col">
+        <span>{task.section.code}</span>
+        <small>{task.section.name}</small>
+      </div>
+
+      <div>
+        <span
+          className="task-dept"
+          style={{ color: task.department.color_hex }}
+        >
+          <i
+            style={{
+              height: 6,
+              width: 6,
+              borderRadius: '50%',
+              background: task.department.color_hex,
+              display: 'inline-block',
+            }}
+          />
+          {task.department.code}
+        </span>
+      </div>
+
+      <div className={`task-priority ${tier.cls}`}>
+        <div className="task-priority-track">
+          <span style={{ width: `${task.priority_score}%` }} />
         </div>
-
-        <OperationalStatus
-          status={block.is_joint_block ? 'ACTIVE' : 'AVAILABLE'}
-        />
+        <b>{task.priority_score.toFixed(0)}</b>
       </div>
 
-      <div className="block-detail-grid">
-        <span>
-          <small>Date</small>
-          <b>{displayDate(block.schedule_date)}</b>
-        </span>
-
-        <span>
-          <small>Window</small>
-          <b>
-            {block.start_time} – {block.end_time}
-          </b>
-        </span>
-
-        <span>
-          <small>Duration</small>
-          <b>{block.duration_minutes} minutes</b>
-        </span>
-
-        <span>
-          <small>Tasks</small>
-          <b>{block.task_ids.length} scheduled</b>
-        </span>
-
-        <span>
-          <small>Efficiency</small>
-          <b>{block.efficiency_score}%</b>
-        </span>
-
-        <span>
-          <small>Priority total</small>
-          <b>{block.total_priority_score.toFixed(1)}</b>
-        </span>
-      </div>
-
-      <div className="block-departments">
-        {block.departments_involved.map((department) => (
+      <div className="pgv-task-flags">
+        {task.safety_critical && (
           <span
-            className={deptAccent[department] || ''}
-            key={department}
+            className="pgv-flag is-safety"
+            title="Safety critical"
+            aria-label="Safety critical"
           >
-            {department}
+            <ShieldAlert className="h-3 w-3" />
           </span>
-        ))}
+        )}
+        {task.requires_line_block && (
+          <span
+            className="pgv-flag is-block-req"
+            title="Requires line block"
+            aria-label="Requires line block"
+          >
+            <SquareStack className="h-3 w-3" />
+          </span>
+        )}
+        {task.days_overdue > 0 && (
+          <span
+            className="pgv-flag is-overdue"
+            title={`${task.days_overdue} days overdue`}
+          >
+            {task.days_overdue}d overdue
+          </span>
+        )}
       </div>
 
-      <p className="block-explanation">
-        {block.why_explanation ||
-          'No operational explanation returned for this block.'}
-      </p>
+      <div className="pgv-task-duration">
+        <Clock3 className="h-3 w-3" aria-hidden="true" />
+        {task.duration_minutes} min
+      </div>
+
+      <div className="pgv-task-status-col">
+        {inPlan ? (
+          <span className="pgv-scheduled-badge">
+            <CheckCircle2 className="h-3 w-3" />
+            Block #{blockId}
+          </span>
+        ) : (
+          <span className="pgv-unscheduled-badge">Unscheduled</span>
+        )}
+      </div>
     </div>
   )
 }
 
-export function PlanningView() {
-  const [startDate, setStartDate] = useState(() =>
-    formatDate(new Date()),
-  )
+// ─── Block card ───────────────────────────────────────────────────────────────
 
+function BlockCard({
+  block,
+  tasks,
+  selected,
+  onSelect,
+}: {
+  block: PlanBlock
+  tasks: Task[]
+  selected: boolean
+  onSelect: () => void
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const blockTasks = tasks.filter((t) => block.task_ids.includes(t.id))
+
+  const effClass =
+    block.efficiency_score >= 80
+      ? 'is-high-eff'
+      : block.efficiency_score >= 60
+        ? 'is-mid-eff'
+        : 'is-low-eff'
+
+  return (
+    <div
+      className={`pgv-block-card ${selected ? 'is-selected' : ''} ${block.is_joint_block ? 'is-joint' : ''}`}
+      aria-selected={selected}
+    >
+      {/* Card header */}
+      <div className="pgv-block-card-header">
+        <div className="pgv-block-card-identity">
+          <button
+            className="pgv-block-card-select"
+            type="button"
+            onClick={onSelect}
+            aria-label={`Select block ${block.id}`}
+          >
+            <span className="pgv-block-id">B-{String(block.id).padStart(2, '0')}</span>
+            {block.is_joint_block && (
+              <span className="pgv-joint-badge">JOINT</span>
+            )}
+          </button>
+
+          <div className="pgv-block-section">
+            <Route className="h-3 w-3" aria-hidden="true" />
+            {block.section_code} · {block.section_name}
+          </div>
+        </div>
+
+        <button
+          className="pgv-block-expand-btn"
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          aria-label={expanded ? 'Collapse block details' : 'Expand block details'}
+          aria-expanded={expanded}
+        >
+          {expanded ? (
+            <ChevronUp className="h-4 w-4" />
+          ) : (
+            <ChevronDown className="h-4 w-4" />
+          )}
+        </button>
+      </div>
+
+      {/* Time strip */}
+      <div className="pgv-block-timestrip">
+        <div className="pgv-block-time-range">
+          <Calendar className="h-3 w-3" aria-hidden="true" />
+          {displayDate(block.schedule_date)}
+          <span className="pgv-time-sep">·</span>
+          <Clock3 className="h-3 w-3" aria-hidden="true" />
+          {block.start_time}
+          <span className="pgv-time-sep">—</span>
+          {block.end_time}
+          <span className="pgv-duration-badge">{block.duration_minutes} min</span>
+        </div>
+
+        <div className={`pgv-efficiency ${effClass}`}>
+          <Zap className="h-3 w-3" aria-hidden="true" />
+          {block.efficiency_score}% utilisation
+        </div>
+      </div>
+
+      {/* Department tags */}
+      <div className="pgv-block-depts">
+        {block.departments_involved.map((d) => (
+          <span key={d} className={`pgv-dept-tag ${deptAccent[d] ?? ''}`}>
+            {d}
+          </span>
+        ))}
+        <span className="pgv-task-count">
+          <Layers3 className="h-3 w-3" aria-hidden="true" />
+          {block.task_ids.length} task{block.task_ids.length !== 1 ? 's' : ''}
+        </span>
+      </div>
+
+      {/* Expanded detail */}
+      {expanded && (
+        <div className="pgv-block-expanded">
+          {/* Explanation */}
+          {block.why_explanation && (
+            <p className="pgv-block-explanation">{block.why_explanation}</p>
+          )}
+
+          {/* Task→Block relationship */}
+          <div className="pgv-block-tasks-heading">
+            <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
+            Scheduled tasks
+          </div>
+
+          {blockTasks.length > 0 ? (
+            <div className="pgv-block-task-list">
+              {blockTasks.map((t) => (
+                <div className="pgv-block-task-item" key={t.id}>
+                  <span className="pgv-block-task-code">{t.task_code}</span>
+                  <span className="pgv-block-task-type">{t.task_type}</span>
+                  <span
+                    className="pgv-block-task-dept"
+                    style={{ color: t.department.color_hex }}
+                  >
+                    {t.department.code}
+                  </span>
+                  <span className="pgv-block-task-dur">
+                    {t.duration_minutes} min
+                  </span>
+                  {t.safety_critical && (
+                    <ShieldAlert
+                      className="h-3 w-3 text-amber-400"
+                      aria-label="Safety critical"
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="pgv-block-task-ids">
+              Task IDs: {block.task_ids.join(', ')}
+            </p>
+          )}
+
+          {/* Priority total */}
+          <div className="pgv-block-metrics">
+            <span>
+              <small>Priority total</small>
+              <b>{block.total_priority_score.toFixed(1)}</b>
+            </span>
+            <span>
+              <small>Run ID</small>
+              <b>{block.run_id ?? '—'}</b>
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Summary metrics strip ────────────────────────────────────────────────────
+
+function SummaryMetric({
+  label,
+  value,
+  sub,
+  icon: Icon,
+  variant,
+}: {
+  label: string
+  value: string | number
+  sub?: string
+  icon: typeof Layers3
+  variant?: 'default' | 'warning' | 'critical' | 'success'
+}) {
+  const variantClass = variant ? `pgv-metric-${variant}` : ''
+  return (
+    <div className={`pgv-metric ${variantClass}`}>
+      <div className="pgv-metric-icon">
+        <Icon className="h-4 w-4" aria-hidden="true" />
+      </div>
+      <div>
+        <span className="pgv-metric-label">{label}</span>
+        <strong className="pgv-metric-value">{value}</strong>
+        {sub && <span className="pgv-metric-sub">{sub}</span>}
+      </div>
+    </div>
+  )
+}
+
+// ─── Empty/workflow hint ──────────────────────────────────────────────────────
+
+function WorkflowHint() {
+  return (
+    <div className="pgv-workflow-hint">
+      <div className="pgv-workflow-steps">
+        {[
+          {
+            n: '1',
+            title: 'Select Planning Context',
+            desc: 'Set dates, horizon, departments, and railway sections.',
+          },
+          {
+            n: '2',
+            title: 'Review Eligible Tasks',
+            desc: 'Inspect pending and overdue maintenance tasks in scope.',
+          },
+          {
+            n: '3',
+            title: 'Generate Coordinated Plan',
+            desc: 'The optimizer assigns tasks to available COA block windows.',
+          },
+          {
+            n: '4',
+            title: 'Analyse Generated Blocks',
+            desc: 'Review block cards, task assignments, and efficiency scores.',
+          },
+        ].map((step) => (
+          <div className="pgv-workflow-step" key={step.n}>
+            <div className="pgv-workflow-step-number">{step.n}</div>
+            <div>
+              <strong>{step.title}</strong>
+              <p>{step.desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
+export function PlanningView() {
+  // ── Planning context state ─────────────────────────────────────────────────
+  const [startDate, setStartDate] = useState(() => formatDate(new Date()))
   const [endDate, setEndDate] = useState(() =>
     formatDate(new Date(Date.now() + 6 * 86400000)),
   )
-
-  // Backend compatibility:
-  // Weekly = 7, Monthly = 30.
   const [horizon, setHorizon] = useState('7')
-
   const [density, setDensity] = useState(1)
-
-  const [depts, setDepts] = useState<string[]>([
-    'ENG',
-    'ST',
-    'OHE',
-  ])
-
+  const [depts, setDepts] = useState<string[]>(['ENG', 'ST', 'OHE'])
   const [sectionIds, setSectionIds] = useState<number[]>([])
 
+  // ── Sections (derived from tasks endpoint) ─────────────────────────────────
   const [sections, setSections] = useState<
     { id: number; name: string; code: string }[]
   >([])
 
-  const [plan, setPlan] =
-    useState<PlanGenerateResponse | null>(null)
+  // ── Task eligibility panel ─────────────────────────────────────────────────
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [tasksLoading, setTasksLoading] = useState(false)
+  const [tasksError, setTasksError] = useState('')
+  const [taskFilter, setTaskFilter] = useState('')
+  const [showTasksPanel, setShowTasksPanel] = useState(true)
 
+  // ── Plan generation ────────────────────────────────────────────────────────
+  const [plan, setPlan] = useState<PlanGenerateResponse | null>(null)
   const [loading, setLoading] = useState(false)
-
   const [error, setError] = useState('')
 
-  const [selectedBlockId, setSelectedBlockId] =
-    useState<number | null>(null)
+  // ── Selected block (for timeline + detail) ─────────────────────────────────
+  const [selectedBlockId, setSelectedBlockId] = useState<number | null>(null)
 
-  const [history, setHistory] =
-    useState<PlanHistoryResponse | null>(null)
-
-  const [historyError, setHistoryError] = useState('')
-
-  const [trains, setTrains] =
-    useState<TrainSchedule[]>([])
-
-  const [windows, setWindows] =
-    useState<BlockWindow[]>([])
-
+  // ── COA context ────────────────────────────────────────────────────────────
+  const [trains, setTrains] = useState<TrainSchedule[]>([])
+  const [windows, setWindows] = useState<BlockWindow[]>([])
   const [coaLoading, setCoaLoading] = useState(false)
-
   const [coaError, setCoaError] = useState('')
 
-  const [validator, setValidator] = useState({
-    section_id: '',
-    date: formatDate(new Date()),
-    start_time: '02:00',
-    end_time: '04:00',
-  })
+  // ── Panel visibility ───────────────────────────────────────────────────────
+  const [showTimeline, setShowTimeline] = useState(true)
+  const [showCoaContext, setShowCoaContext] = useState(true)
 
-  const [validation, setValidation] = useState<{
-    valid: boolean
-    message: string
-    conflict_train?: string
-    conflict_time?: string
-  } | null>(null)
+  // ─────────────────────────────────────────────────────────────────────────
+  // Data loading
+  // ─────────────────────────────────────────────────────────────────────────
 
-  const [validationLoading, setValidationLoading] =
-    useState(false)
-
-  const [bundleMethod, setBundleMethod] =
-    useState<'pairwise' | 'dbscan'>('pairwise')
-
-  const [bundleRows, setBundleRows] = useState<
-    {
-      task_id: string
-      section: string
-      start_minute: string
-      end_minute: string
-    }[]
-  >([])
-
-  const [bundles, setBundles] = useState<BundleCandidate[]>([])
-
-  const [bundleLoading, setBundleLoading] =
-    useState(false)
-
-  const [bundleError, setBundleError] = useState('')
-
-  const [expandedHistory, setExpandedHistory] =
-    useState<string | null>(null)
-
-  const loadSections = useCallback(
-    () =>
-      api
-        .tasks({
-          min_severity: 1,
-          limit: 500,
-          skip: 0,
+  const loadSections = useCallback(async () => {
+    try {
+      const res = await api.tasks({ min_severity: 1, limit: 500, skip: 0 })
+      const unique = new Map<number, { id: number; name: string; code: string }>()
+      res.tasks.forEach((t: Task) => {
+        unique.set(t.section.id, {
+          id: t.section.id,
+          name: t.section.name,
+          code: t.section.code,
         })
-        .then((response) => {
-          const unique = new Map<
-            number,
-            {
-              id: number
-              name: string
-              code: string
-            }
-          >()
-
-          response.tasks.forEach((task: Task) => {
-            unique.set(task.section.id, {
-              id: task.section.id,
-              name: task.section.name,
-              code: task.section.code,
-            })
-          })
-
-          setSections(
-            [...unique.values()].sort((a, b) =>
-              a.code.localeCompare(b.code),
-            ),
-          )
-        })
-        .catch(() => setSections([])),
-    [],
-  )
-
-  const loadHistory = useCallback(() => {
-    setHistoryError('')
-
-    return api
-      .planHistory(20)
-      .then(setHistory)
-      .catch((reason: unknown) =>
-        setHistoryError(
-          reason instanceof Error
-            ? reason.message
-            : 'Unable to load plan history.',
-        ),
-      )
+      })
+      setSections([...unique.values()].sort((a, b) => a.code.localeCompare(b.code)))
+    } catch {
+      setSections([])
+    }
   }, [])
 
-  const loadCoa = useCallback(() => {
+  const loadEligibleTasks = useCallback(async () => {
+    setTasksLoading(true)
+    setTasksError('')
+    try {
+      const params: Record<string, string | number | boolean | undefined> = {
+        limit: 200,
+        skip: 0,
+        min_severity: 1,
+      }
+      if (sectionIds.length === 1) params.section_id = sectionIds[0]
+      if (depts.length < 3) params.dept = depts[0] // only if exactly one selected
+      const res = await api.tasks(params)
+      setTasks(res.tasks)
+    } catch (e: unknown) {
+      setTasksError(
+        e instanceof Error ? e.message : 'Unable to load eligible tasks.',
+      )
+    } finally {
+      setTasksLoading(false)
+    }
+  }, [sectionIds, depts])
+
+  const loadCoa = useCallback(async () => {
     setCoaLoading(true)
     setCoaError('')
-
-    const query = new URLSearchParams({
-      limit: '200',
-    })
-
-    const windowQuery = new URLSearchParams({
-      available_only: 'true',
-    })
-
-    if (sectionIds.length === 1) {
-      query.set('section_id', String(sectionIds[0]))
-
-      windowQuery.set(
-        'section_id',
-        String(sectionIds[0]),
+    try {
+      const q = new URLSearchParams({ limit: '200' })
+      const wq = new URLSearchParams({ available_only: 'true' })
+      if (sectionIds.length === 1) {
+        q.set('section_id', String(sectionIds[0]))
+        wq.set('section_id', String(sectionIds[0]))
+      }
+      if (startDate) {
+        q.set('schedule_date', startDate)
+        wq.set('schedule_date', startDate)
+      }
+      const [trainData, windowData] = await Promise.all([
+        api.trains(q),
+        api.windows(wq),
+      ])
+      setTrains(trainData)
+      setWindows(windowData)
+    } catch (e: unknown) {
+      setCoaError(
+        e instanceof Error ? e.message : 'Unable to load COA context.',
       )
+    } finally {
+      setCoaLoading(false)
     }
-
-    if (startDate) {
-      query.set('schedule_date', startDate)
-
-      windowQuery.set('schedule_date', startDate)
-    }
-
-    return Promise.all([
-      api.trains(query),
-      api.windows(windowQuery),
-    ])
-      .then(([trainData, windowData]) => {
-        setTrains(trainData)
-        setWindows(windowData)
-      })
-      .catch((reason: unknown) =>
-        setCoaError(
-          reason instanceof Error
-            ? reason.message
-            : 'Unable to load COA timetable context.',
-        ),
-      )
-      .finally(() => setCoaLoading(false))
   }, [sectionIds, startDate])
 
   useEffect(() => {
     void loadSections()
-    void loadHistory()
-  }, [loadHistory, loadSections])
+  }, [loadSections])
 
   useEffect(() => {
-    setValidator((value) => ({
-      ...value,
-      date: startDate,
-    }))
-  }, [startDate])
+    void loadEligibleTasks()
+  }, [loadEligibleTasks])
 
   useEffect(() => {
     void loadCoa()
   }, [loadCoa])
 
-  const selectedBlock = plan?.blocks.find(
-    (block) => block.id === selectedBlockId,
-  )
-
-  const groupedHistory = useMemo(
-    () => history?.blocks ?? [],
-    [history],
-  )
+  // ─────────────────────────────────────────────────────────────────────────
+  // Plan generation
+  // ─────────────────────────────────────────────────────────────────────────
 
   const generatePlan = async () => {
     setLoading(true)
     setError('')
-    setPlan(null)
+    // Do NOT clear the previous plan until we have a new one — preserve on error
     setSelectedBlockId(null)
 
     try {
       const result = await api.generatePlan({
         start_date: startDate,
         end_date: endDate,
-
-        // IMPORTANT:
-        // The current backend accepts horizon as a string
-        // in the request but expects an integer in the
-        // response model. Therefore:
-        // Weekly -> "7"
-        // Monthly -> "30"
         horizon: String(horizon),
-
         train_density_multiplier: density,
         dept_codes: depts.length ? depts : null,
         section_ids: sectionIds.length ? sectionIds : null,
@@ -613,140 +751,110 @@ export function PlanningView() {
         setSelectedBlockId(result.blocks[0].id)
       }
 
-      setBundleRows(
-        result.blocks.flatMap((block) =>
-          block.task_ids.map((taskId) => ({
-            task_id: String(taskId),
-            section: block.section_code,
-            start_minute: String(
-              toMinutes(block.start_time),
-            ),
-            end_minute: String(
-              toMinutes(block.end_time),
-            ),
-          })),
-        ),
-      )
-
-      void loadHistory()
-      await loadCoa()
-    } catch (reason: unknown) {
+      // Refresh COA context to reflect the new schedule date
+      void loadCoa()
+    } catch (e: unknown) {
       setError(
-        reason instanceof Error
-          ? reason.message
-          : 'Unable to generate optimized plan.',
+        e instanceof Error ? e.message : 'Unable to generate optimised plan.',
       )
     } finally {
       setLoading(false)
     }
   }
 
-  const validateWindow = async () => {
-    setValidationLoading(true)
-    setValidation(null)
-
-    try {
-      const result = await api.validatePlan({
-        ...validator,
-        section_id: Number(validator.section_id),
-      })
-
-      setValidation(result)
-    } catch (reason: unknown) {
-      setValidation({
-        valid: false,
-        message:
-          reason instanceof Error
-            ? reason.message
-            : 'Unable to validate this block window.',
-      })
-    } finally {
-      setValidationLoading(false)
-    }
+  const resetPlan = () => {
+    setPlan(null)
+    setSelectedBlockId(null)
+    setError('')
   }
 
-  const findBundles = async () => {
-    setBundleLoading(true)
-    setBundleError('')
+  // ─────────────────────────────────────────────────────────────────────────
+  // Derived data
+  // ─────────────────────────────────────────────────────────────────────────
 
-    try {
-      const response = await api.bundleCandidates(
-        {
-          tasks: bundleRows
-            .filter(
-              (row) =>
-                row.task_id &&
-                row.section &&
-                row.start_minute &&
-                row.end_minute,
-            )
-            .map((row) => ({
-              task_id: Number(row.task_id),
-              section: row.section,
-              start_minute: Number(row.start_minute),
-              end_minute: Number(row.end_minute),
-            })),
-        },
-        bundleMethod,
-      )
-
-      setBundles(response.bundles)
-    } catch (reason: unknown) {
-      setBundles([])
-
-      setBundleError(
-        reason instanceof Error
-          ? reason.message
-          : 'Unable to find bundle candidates.',
-      )
-    } finally {
-      setBundleLoading(false)
+  // Map task_id -> block for scheduled tasks
+  const taskBlockMap = useMemo(() => {
+    const map = new Map<number, number>()
+    if (plan) {
+      plan.blocks.forEach((b) => {
+        b.task_ids.forEach((tid) => map.set(tid, b.id))
+      })
     }
+    return map
+  }, [plan])
+
+  // Filter tasks for eligibility panel
+  const filteredTasks = useMemo(() => {
+    if (!taskFilter.trim()) return tasks
+    const q = taskFilter.toLowerCase()
+    return tasks.filter(
+      (t) =>
+        t.task_code.toLowerCase().includes(q) ||
+        t.task_type.toLowerCase().includes(q) ||
+        t.section.code.toLowerCase().includes(q) ||
+        t.department.code.toLowerCase().includes(q),
+    )
+  }, [tasks, taskFilter])
+
+  // Tasks that ended up scheduled in plan
+  const scheduledTaskIds = useMemo(
+    () => (plan ? new Set(plan.blocks.flatMap((b) => b.task_ids)) : new Set<number>()),
+    [plan],
+  )
+
+  const selectedBlock = plan?.blocks.find((b) => b.id === selectedBlockId)
+
+  const toggleDept = (code: string, checked: boolean) => {
+    setDepts((cur) =>
+      checked ? [...cur, code] : cur.filter((d) => d !== code),
+    )
   }
+
+  const toggleSection = (id: number, checked: boolean) => {
+    setSectionIds((cur) =>
+      checked ? [...cur, id] : cur.filter((s) => s !== id),
+    )
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Render
+  // ─────────────────────────────────────────────────────────────────────────
 
   return (
     <div className="planning-page">
+      {/* ── Page header ─────────────────────────────────────────────────── */}
       <header className="planning-page-header">
         <div>
-          <p className="shell-eyebrow">
-            Planning / Control workspace
-          </p>
-
-          <h2 className="planning-title">
-            Block Planning Workspace
-          </h2>
-
+          <p className="shell-eyebrow">Planning / Generator</p>
+          <h2 className="planning-title">Planning Generator</h2>
           <p className="planning-subtitle">
-            Coordinate maintenance blocks across departments
-            against the operating timetable.
+            Generate coordinated railway maintenance blocks from maintenance
+            tasks, operational constraints and train movement information.
           </p>
         </div>
 
-        <div className="planning-status">
+        <div className="pgv-header-status">
           <span
-            className={`status-dot ${
-              loading ? '' : 'is-healthy'
-            }`}
+            className={`status-dot ${loading ? '' : plan ? 'is-healthy' : ''}`}
           />
-
           {loading
-            ? 'Optimizer running'
+            ? 'Optimiser running…'
             : plan
-              ? 'Plan generated'
+              ? `Plan ${plan.run_id} generated`
               : 'Ready for planning'}
         </div>
       </header>
 
-      <section className="planning-control-surface">
+      {/* ── Step 1: Planning context ─────────────────────────────────────── */}
+      <section
+        className="planning-control-surface pgv-step"
+        aria-labelledby="pgv-context-heading"
+      >
         <div className="planning-control-heading">
           <div>
-            <p className="shell-eyebrow">
-              Planning controls
-            </p>
-
-            <h3>Optimization parameters</h3>
+            <p className="shell-eyebrow">Step 1</p>
+            <h3 id="pgv-context-heading">Planning Context</h3>
           </div>
-
           <span className="planning-control-note">
             All controls map to the plan generation API
           </span>
@@ -755,46 +863,38 @@ export function PlanningView() {
         <div className="planning-control-grid">
           <label>
             <span>Start date</span>
-
             <input
               className="input"
               type="date"
               value={startDate}
-              onChange={(event) =>
-                setStartDate(event.target.value)
-              }
+              onChange={(e) => setStartDate(e.target.value)}
+              aria-label="Planning start date"
             />
           </label>
 
           <label>
             <span>End date</span>
-
             <input
               className="input"
               type="date"
               value={endDate}
-              onChange={(event) =>
-                setEndDate(event.target.value)
-              }
+              min={startDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              aria-label="Planning end date"
             />
           </label>
 
           <label>
-            <span>Planning mode</span>
-
+            <span>Planning horizon</span>
             <select
               className="input"
               value={horizon}
-              onChange={(event) =>
-                setHorizon(event.target.value)
-              }
+              onChange={(e) => setHorizon(e.target.value)}
+              aria-label="Planning horizon"
             >
-              {horizons.map((item) => (
-                <option
-                  value={item.value}
-                  key={item.value}
-                >
-                  {item.label}
+              {HORIZONS.map((h) => (
+                <option value={h.value} key={h.value}>
+                  {h.label}
                 </option>
               ))}
             </select>
@@ -804,7 +904,6 @@ export function PlanningView() {
             <span>
               Train density <b>{density.toFixed(1)}x</b>
             </span>
-
             <input
               className="planning-range"
               type="range"
@@ -812,859 +911,553 @@ export function PlanningView() {
               max="2"
               step="0.1"
               value={density}
-              onChange={(event) =>
-                setDensity(Number(event.target.value))
-              }
+              onChange={(e) => setDensity(Number(e.target.value))}
+              aria-label={`Train density multiplier: ${density.toFixed(1)}`}
             />
           </label>
         </div>
 
         <div className="planning-control-lower">
+          {/* Department filter */}
           <div className="planning-departments">
             <span>Departments</span>
-
-            {departments.map((department) => (
+            {DEPARTMENTS.map((d) => (
               <label
-                key={department.code}
-                className={
-                  depts.includes(department.code)
-                    ? 'is-selected'
-                    : ''
-                }
+                key={d.code}
+                className={depts.includes(d.code) ? 'is-selected' : ''}
               >
                 <input
                   type="checkbox"
-                  checked={depts.includes(
-                    department.code,
-                  )}
-                  onChange={(event) =>
-                    setDepts((current) =>
-                      event.target.checked
-                        ? [
-                            ...current,
-                            department.code,
-                          ]
-                        : current.filter(
-                            (code) =>
-                              code !== department.code,
-                          ),
-                    )
-                  }
+                  checked={depts.includes(d.code)}
+                  onChange={(e) => toggleDept(d.code, e.target.checked)}
+                  aria-label={`Include ${d.label} department`}
                 />
-
-                {department.code}
-
-                <small>{department.label}</small>
+                {d.code}
+                <small>{d.label}</small>
               </label>
             ))}
           </div>
 
+          {/* Section filter */}
           <div className="planning-sections">
             <span>Railway sections</span>
-
             <div className="planning-section-picker">
               {sections.length ? (
-                sections.map((section) => (
-                  <label key={section.id}>
+                sections.map((s) => (
+                  <label key={s.id}>
                     <input
                       type="checkbox"
-                      checked={sectionIds.includes(
-                        section.id,
-                      )}
-                      onChange={(event) =>
-                        setSectionIds((current) =>
-                          event.target.checked
-                            ? [
-                                ...current,
-                                section.id,
-                              ]
-                            : current.filter(
-                                (id) =>
-                                  id !== section.id,
-                              ),
-                        )
-                      }
+                      checked={sectionIds.includes(s.id)}
+                      onChange={(e) => toggleSection(s.id, e.target.checked)}
+                      aria-label={`Include section ${s.code}`}
                     />
-
-                    {section.code}
-
-                    <small>{section.name}</small>
+                    {s.code}
+                    <small>{s.name}</small>
                   </label>
                 ))
               ) : (
-                <span className="planning-muted">
-                  Loading section inventory...
-                </span>
+                <span className="planning-muted">Loading sections…</span>
               )}
             </div>
           </div>
 
+          {/* Generate button */}
           <button
-            className="planning-generate-button"
+            className="pgv-generate-button"
             type="button"
             onClick={() => void generatePlan()}
-            disabled={
-              loading || !startDate || !endDate
-            }
+            disabled={loading || !startDate || !endDate}
+            aria-busy={loading}
+            aria-label={loading ? 'Generating plan, please wait' : 'Generate maintenance plan'}
           >
-            <Route className="h-4 w-4" />
-
-            {loading
-              ? 'Optimizing plan...'
-              : 'Generate optimized plan'}
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <Route className="h-4 w-4" aria-hidden="true" />
+            )}
+            {loading ? 'Optimising plan…' : 'Generate Plan'}
           </button>
         </div>
 
-        {error ? (
-          <div className="planning-error">
-            <AlertTriangle className="h-4 w-4" />
-
-            {error}
-
-            <button
-              type="button"
-              onClick={() => void generatePlan()}
-            >
+        {/* Error */}
+        {error && (
+          <div className="planning-error" role="alert">
+            <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+            <span>{error}</span>
+            <button type="button" onClick={() => void generatePlan()}>
               Retry
             </button>
           </div>
-        ) : null}
-      </section>
+        )}
 
-      <section
-        className="planning-summary-grid"
-        aria-label="Optimization status"
-      >
-        <SummaryMetric
-          label="Blocks generated"
-          value={plan ? plan.total_blocks : '—'}
-          icon={Layers3}
-        />
-
-        <SummaryMetric
-          label="Tasks scheduled"
-          value={
-            plan ? plan.total_tasks_scheduled : '—'
-          }
-          icon={CheckCircle2}
-        />
-
-        <SummaryMetric
-          label="Joint blocks"
-          value={plan ? plan.joint_blocks : '—'}
-          icon={Database}
-        />
-
-        <SummaryMetric
-          label="Tasks dropped"
-          value={plan ? plan.tasks_dropped : '—'}
-          icon={ShieldAlert}
-        />
-
-        <SummaryMetric
-          label="Average efficiency"
-          value={
-            plan ? `${plan.avg_efficiency}%` : '—'
-          }
-          icon={Clock3}
-        />
-
-        <SummaryMetric
-          label="Availability"
-          value={
-            plan
-              ? `${plan.asset_availability_pct}%`
-              : '—'
-          }
-          icon={TrainFront}
-        />
-      </section>
-
-      <section className="planning-main-grid">
-        <Panel
-          title="Planning timeline"
-          actions={
-            <span className="panel-meta">
-              {plan
-                ? `${plan.blocks.length} generated block${
-                    plan.blocks.length === 1
-                      ? ''
-                      : 's'
-                  }`
-                : 'No optimized plan generated yet'}
-            </span>
-          }
-        >
-          {plan ? (
-            <Timeline
-              blocks={plan.blocks}
-              trains={trains}
-              windows={windows}
-              selectedId={selectedBlockId}
-              onSelect={setSelectedBlockId}
-            />
-          ) : (
-            <div className="planning-initial">
-              <Route className="h-7 w-7" />
-
-              <h3>
-                No optimized plan generated yet
-              </h3>
-
-              <p>
-                Set the planning parameters and generate a
-                plan to inspect blocks against timetable
-                constraints.
-              </p>
-            </div>
-          )}
-
-          {coaLoading ? (
-            <div className="planning-loading">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Loading COA timetable context
-            </div>
-          ) : null}
-
-          {coaError ? (
-            <div className="planning-inline-error">
-              <AlertTriangle className="h-4 w-4" />
-
-              {coaError}
-
-              <button
-                type="button"
-                onClick={() => void loadCoa()}
-              >
-                Retry
-              </button>
-            </div>
-          ) : null}
-        </Panel>
-
-        <Panel
-          title="Selected block"
-          actions={
-            <span className="panel-meta">
-              Operational detail
-            </span>
-          }
-        >
-          <BlockDetails block={selectedBlock} />
-        </Panel>
-      </section>
-
-      <section className="planning-context-grid">
-        <Panel
-          title="Train operations context"
-          actions={
-            <span className="panel-meta">
-              COA · {startDate}
-            </span>
-          }
-        >
-          {trains.length ? (
-            <div className="planning-train-list">
-              {trains.slice(0, 10).map((train) => (
-                <div
-                  className="planning-train-row"
-                  key={train.id}
-                >
-                  <span className="train-time">
-                    {train.entry_time}
-                  </span>
-
-                  <span className="train-line">
-                    <TrainFront className="h-3.5 w-3.5" />
-
-                    {train.train_no}
-
-                    <small>
-                      {train.train_name ||
-                        train.train_type}{' '}
-                      · {train.direction}
-                    </small>
-                  </span>
-
-                  <span
-                    className={`train-priority is-${train.train_priority}`}
-                  >
-                    {train.train_priority}
-                  </span>
-
-                  <span>{train.exit_time}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <EmptyState label="No COA train movements returned for this date and section scope." />
-          )}
-        </Panel>
-
-        <Panel
-          title="Available COA windows"
-          actions={
-            <span className="panel-meta">
-              {windows.length} available
-            </span>
-          }
-        >
-          {windows.length ? (
-            <div className="planning-window-list">
-              {windows.slice(0, 8).map((window) => (
-                <div
-                  className="planning-window-row"
-                  key={window.id}
-                >
-                  <span className="window-time">
-                    {window.start_time} – {window.end_time}
-                  </span>
-
-                  <span>
-                    Section {window.section_id}
-                  </span>
-
-                  <span>
-                    {window.duration_minutes} min
-                  </span>
-
-                  <OperationalStatus status="AVAILABLE" />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <EmptyState label="No available windows returned for the current date and scope." />
-          )}
-        </Panel>
-      </section>
-
-      <section className="planning-lower-grid">
-        <Panel
-          title="Plan history"
-          actions={
+        {/* Reset plan (only if one exists) */}
+        {plan && !loading && (
+          <div className="pgv-reset-row">
+            <RefreshCw className="h-3 w-3" aria-hidden="true" />
+            <span>Plan {plan.run_id} generated.</span>
             <button
-              className="planning-icon-action"
               type="button"
-              onClick={() => void loadHistory()}
-              aria-label="Refresh plan history"
-              title="Refresh plan history"
+              className="pgv-reset-btn"
+              onClick={resetPlan}
+              aria-label="Clear current plan and start over"
+            >
+              Start over
+            </button>
+          </div>
+        )}
+      </section>
+
+      {/* ── Step 2: Task eligibility ─────────────────────────────────────── */}
+      <section className="pgv-step" aria-labelledby="pgv-tasks-heading">
+        <div className="pgv-section-header">
+          <div>
+            <p className="shell-eyebrow">Step 2</p>
+            <h3 id="pgv-tasks-heading">Eligible Maintenance Tasks</h3>
+          </div>
+
+          <div className="pgv-section-header-actions">
+            {!tasksLoading && (
+              <span className="panel-meta">
+                {filteredTasks.length} of {tasks.length} task
+                {tasks.length !== 1 ? 's' : ''}
+                {plan
+                  ? ` · ${scheduledTaskIds.size} scheduled`
+                  : ''}
+              </span>
+            )}
+            <button
+              className="pgv-icon-btn"
+              type="button"
+              onClick={() => void loadEligibleTasks()}
+              aria-label="Refresh eligible tasks"
+              title="Refresh eligible tasks"
+              disabled={tasksLoading}
             >
               <RefreshCw className="h-3.5 w-3.5" />
             </button>
-          }
-        >
-          {historyError ? (
-            <div className="planning-inline-error">
-              <AlertTriangle className="h-4 w-4" />
-
-              {historyError}
-
-              <button
-                type="button"
-                onClick={() => void loadHistory()}
-              >
-                Retry
-              </button>
-            </div>
-          ) : !history ? (
-            <div className="planning-loading">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Loading plan history
-            </div>
-          ) : groupedHistory.length ? (
-            <div className="planning-history-list">
-              {groupedHistory.map((block) => {
-                const key = `${block.id}-${block.run_id}`
-
-                return (
-                  <button
-                    className={`planning-history-item ${
-                      expandedHistory === key
-                        ? 'is-expanded'
-                        : ''
-                    }`}
-                    type="button"
-                    key={key}
-                    onClick={() =>
-                      setExpandedHistory((value) =>
-                        value === key ? null : key,
-                      )
-                    }
-                  >
-                    <div>
-                      <strong>
-                        {block.run_id ||
-                          `Block ${block.id}`}
-                      </strong>
-
-                      <span>
-                        {block.section_code ||
-                          `Section ${block.section_id}`}{' '}
-                        · {block.schedule_date}
-                      </span>
-                    </div>
-
-                    <ChevronRight className="history-chevron" />
-
-                    <span className="history-time">
-                      {block.start_time} –{' '}
-                      {block.end_time}
-                    </span>
-
-                    {expandedHistory === key ? (
-                      <div className="history-expanded">
-                        {block.duration_minutes} minutes ·{' '}
-                        {block.efficiency_score}% efficiency ·{' '}
-                        {block.task_ids.length} task IDs
-                      </div>
-                    ) : null}
-                  </button>
-                )
-              })}
-            </div>
-          ) : (
-            <EmptyState label="No historical plans found." />
-          )}
-        </Panel>
-
-        <Validator
-          validator={validator}
-          setValidator={setValidator}
-          validation={validation}
-          loading={validationLoading}
-          onSubmit={() => void validateWindow()}
-        />
-      </section>
-
-      <BundlePanel
-        rows={bundleRows}
-        setRows={setBundleRows}
-        method={bundleMethod}
-        setMethod={setBundleMethod}
-        bundles={bundles}
-        error={bundleError}
-        loading={bundleLoading}
-        onSubmit={() => void findBundles()}
-      />
-    </div>
-  )
-}
-
-function SummaryMetric({
-  label,
-  value,
-  icon: Icon,
-}: {
-  label: string
-  value: string | number
-  icon: typeof Layers3
-}) {
-  return (
-    <div className="planning-summary-metric">
-      <Icon className="h-4 w-4" />
-
-      <div>
-        <span>{label}</span>
-        <strong>{value}</strong>
-      </div>
-    </div>
-  )
-}
-
-function Validator({
-  validator,
-  setValidator,
-  validation,
-  loading,
-  onSubmit,
-}: {
-  validator: {
-    section_id: string
-    date: string
-    start_time: string
-    end_time: string
-  }
-
-  setValidator: React.Dispatch<
-    React.SetStateAction<{
-      section_id: string
-      date: string
-      start_time: string
-      end_time: string
-    }>
-  >
-
-  validation: {
-    valid: boolean
-    message: string
-    conflict_train?: string
-    conflict_time?: string
-  } | null
-
-  loading: boolean
-  onSubmit: () => void
-}) {
-  return (
-    <Panel
-      title="Manual block validator"
-      actions={
-        <span className="panel-meta">
-          Train conflict check
-        </span>
-      }
-    >
-      <div className="validator-grid">
-        <label>
-          <span>Section ID</span>
-
-          <input
-            className="input"
-            type="number"
-            placeholder="Section ID"
-            value={validator.section_id}
-            onChange={(event) =>
-              setValidator((value) => ({
-                ...value,
-                section_id: event.target.value,
-              }))
-            }
-          />
-        </label>
-
-        <label>
-          <span>Date</span>
-
-          <input
-            className="input"
-            type="date"
-            value={validator.date}
-            onChange={(event) =>
-              setValidator((value) => ({
-                ...value,
-                date: event.target.value,
-              }))
-            }
-          />
-        </label>
-
-        <label>
-          <span>Start</span>
-
-          <input
-            className="input"
-            type="time"
-            value={validator.start_time}
-            onChange={(event) =>
-              setValidator((value) => ({
-                ...value,
-                start_time: event.target.value,
-              }))
-            }
-          />
-        </label>
-
-        <label>
-          <span>End</span>
-
-          <input
-            className="input"
-            type="time"
-            value={validator.end_time}
-            onChange={(event) =>
-              setValidator((value) => ({
-                ...value,
-                end_time: event.target.value,
-              }))
-            }
-          />
-        </label>
-      </div>
-
-      <button
-        className="planning-secondary-button"
-        type="button"
-        disabled={loading || !validator.section_id}
-        onClick={onSubmit}
-      >
-        {loading ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <ShieldAlert className="h-4 w-4" />
-        )}
-
-        Validate block window
-      </button>
-
-      {validation ? (
-        <div
-          className={`validator-result ${
-            validation.valid
-              ? 'is-clear'
-              : 'is-conflict'
-          }`}
-        >
-          <span>
-            {validation.valid ? (
-              <CheckCircle2 />
-            ) : (
-              <XCircle />
-            )}
-          </span>
-
-          <div>
-            <strong>
-              {validation.valid
-                ? 'CLEAR'
-                : 'CONFLICT'}
-            </strong>
-
-            <p>{validation.message}</p>
-
-            {validation.conflict_train ? (
-              <small>
-                {validation.conflict_train}
-
-                {validation.conflict_time
-                  ? ` · ${validation.conflict_time}`
-                  : ''}
-              </small>
-            ) : null}
+            <button
+              className="pgv-toggle-btn"
+              type="button"
+              onClick={() => setShowTasksPanel((v) => !v)}
+              aria-expanded={showTasksPanel}
+              aria-controls="pgv-tasks-panel"
+            >
+              {showTasksPanel ? (
+                <ChevronUp className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronDown className="h-3.5 w-3.5" />
+              )}
+              {showTasksPanel ? 'Collapse' : 'Expand'}
+            </button>
           </div>
         </div>
-      ) : null}
-    </Panel>
-  )
-}
 
-function BundlePanel({
-  rows,
-  setRows,
-  method,
-  setMethod,
-  bundles,
-  error,
-  loading,
-  onSubmit,
-}: {
-  rows: {
-    task_id: string
-    section: string
-    start_minute: string
-    end_minute: string
-  }[]
-
-  setRows: React.Dispatch<
-    React.SetStateAction<
-      {
-        task_id: string
-        section: string
-        start_minute: string
-        end_minute: string
-      }[]
-    >
-  >
-
-  method: 'pairwise' | 'dbscan'
-
-  setMethod: (
-    method: 'pairwise' | 'dbscan',
-  ) => void
-
-  bundles: BundleCandidate[]
-
-  error: string
-
-  loading: boolean
-
-  onSubmit: () => void
-}) {
-  const update = (
-    index: number,
-    key: keyof (typeof rows)[number],
-    value: string,
-  ) => {
-    setRows((current) =>
-      current.map((row, rowIndex) =>
-        rowIndex === index
-          ? { ...row, [key]: value }
-          : row,
-      ),
-    )
-  }
-
-  return (
-    <Panel
-      title="Coordination opportunities"
-      actions={
-        <span className="panel-meta">
-          Bundle candidates
-        </span>
-      }
-    >
-      <div className="bundle-controls">
-        <label>
-          <span>Method</span>
-
-          <select
-            className="input"
-            value={method}
-            onChange={(event) =>
-              setMethod(
-                event.target.value as
-                  | 'pairwise'
-                  | 'dbscan',
-              )
-            }
-          >
-            <option value="pairwise">
-              Pairwise
-            </option>
-
-            <option value="dbscan">
-              DBSCAN
-            </option>
-          </select>
-        </label>
-
-        <button
-          className="planning-secondary-button"
-          type="button"
-          onClick={() =>
-            setRows((current) => [
-              ...current,
-              {
-                task_id: '',
-                section: '',
-                start_minute: '',
-                end_minute: '',
-              },
-            ])
-          }
-        >
-          Add task input
-        </button>
-
-        <button
-          className="planning-secondary-button"
-          type="button"
-          onClick={onSubmit}
-          disabled={loading || !rows.length}
-        >
-          {loading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Layers3 className="h-4 w-4" />
-          )}
-
-          Find candidates
-        </button>
-      </div>
-
-      {rows.length ? (
-        <div className="bundle-inputs">
-          {rows.map((row, index) => (
-            <div
-              className="bundle-input-row"
-              key={index}
-            >
+        {showTasksPanel && (
+          <div id="pgv-tasks-panel" className="surface-panel">
+            {/* Filter bar */}
+            <div className="pgv-tasks-filter">
+              <Filter className="h-3.5 w-3.5" aria-hidden="true" />
               <input
-                className="input"
-                placeholder="Task ID"
-                value={row.task_id}
-                onChange={(event) =>
-                  update(
-                    index,
-                    'task_id',
-                    event.target.value,
-                  )
-                }
+                className="pgv-tasks-search"
+                type="search"
+                placeholder="Filter by task code, type, section or department…"
+                value={taskFilter}
+                onChange={(e) => setTaskFilter(e.target.value)}
+                aria-label="Filter tasks"
               />
-
-              <input
-                className="input"
-                placeholder="Section"
-                value={row.section}
-                onChange={(event) =>
-                  update(
-                    index,
-                    'section',
-                    event.target.value,
-                  )
-                }
-              />
-
-              <input
-                className="input"
-                placeholder="Start minute"
-                value={row.start_minute}
-                onChange={(event) =>
-                  update(
-                    index,
-                    'start_minute',
-                    event.target.value,
-                  )
-                }
-              />
-
-              <input
-                className="input"
-                placeholder="End minute"
-                value={row.end_minute}
-                onChange={(event) =>
-                  update(
-                    index,
-                    'end_minute',
-                    event.target.value,
-                  )
-                }
-              />
+              {plan && (
+                <span className="pgv-tasks-filter-note">
+                  {scheduledTaskIds.size} scheduled ·{' '}
+                  {tasks.length - scheduledTaskIds.size} not in plan
+                </span>
+              )}
             </div>
-          ))}
+
+            {/* Task list */}
+            <div className="pgv-tasks-list">
+              {tasksLoading ? (
+                <div className="pgv-tasks-skeleton">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="pgv-task-skeleton-row">
+                      <span />
+                      <span />
+                      <span />
+                      <span />
+                      <span />
+                    </div>
+                  ))}
+                </div>
+              ) : tasksError ? (
+                <div className="planning-inline-error" role="alert">
+                  <AlertTriangle className="h-4 w-4" />
+                  {tasksError}
+                  <button
+                    type="button"
+                    onClick={() => void loadEligibleTasks()}
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : filteredTasks.length === 0 ? (
+                <EmptyState label="No tasks match the current planning context." />
+              ) : (
+                <>
+                  {/* Column header */}
+                  <div className="pgv-task-header">
+                    <span>Task / Type</span>
+                    <span>Section</span>
+                    <span>Dept</span>
+                    <span>Priority</span>
+                    <span>Flags</span>
+                    <span>Duration</span>
+                    <span>Plan status</span>
+                  </div>
+                  {filteredTasks.map((t) => (
+                    <TaskEligibilityRow
+                      key={t.id}
+                      task={t}
+                      inPlan={scheduledTaskIds.has(t.id)}
+                      blockId={taskBlockMap.get(t.id)}
+                    />
+                  ))}
+                </>
+              )}
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* ── Generate CTA if no plan yet ──────────────────────────────────── */}
+      {!plan && !loading && (
+        <div className="pgv-step">
+          <WorkflowHint />
         </div>
-      ) : (
-        <EmptyState label="Add generated or manual task coordinates to find bundle candidates." />
       )}
 
-      {error ? (
-        <div className="planning-inline-error">
-          <AlertTriangle className="h-4 w-4" />
-          {error}
+      {/* ── Loading state ────────────────────────────────────────────────── */}
+      {loading && (
+        <div className="pgv-generation-loading" role="status" aria-live="polite">
+          <Loader2 className="h-6 w-6 animate-spin" aria-hidden="true" />
+          <div>
+            <strong>Generating coordinated maintenance plan…</strong>
+            <p>
+              The optimiser is assigning tasks to COA block windows. This may
+              take a moment.
+            </p>
+          </div>
         </div>
-      ) : null}
+      )}
 
-      <div className="bundle-results">
-        {bundles.length ? (
-          bundles.map((bundle, index) => (
-            <div
-              className="bundle-result"
-              key={`${bundle.section}-${index}`}
-            >
-              <div className="bundle-result-heading">
-                <strong>
-                  Candidate{' '}
-                  {String(index + 1).padStart(2, '0')}
-                </strong>
-
-                <span>
-                  Section {bundle.section}
-                </span>
+      {/* ── Step 3+: Generated plan ──────────────────────────────────────── */}
+      {plan && (
+        <>
+          {/* Executive summary */}
+          <section
+            className="pgv-step"
+            aria-labelledby="pgv-summary-heading"
+          >
+            <div className="pgv-section-header">
+              <div>
+                <p className="shell-eyebrow">Step 3 · Run {plan.run_id}</p>
+                <h3 id="pgv-summary-heading">Plan Summary</h3>
               </div>
-
-              <p>
-                Tasks: {bundle.task_ids.join(', ')}
-              </p>
-
-              <small>
-                {bundle.bundle_duration_minutes} min
-                bundle · {bundle.downtime_saved_minutes}{' '}
-                min downtime saved
-              </small>
+              <span className="panel-meta">
+                Horizon: {plan.horizon === 7 ? 'Weekly' : 'Monthly'}
+              </span>
             </div>
-          ))
-        ) : (
-          <EmptyState label="No bundle candidates returned yet." />
+
+            <div className="pgv-metrics-grid">
+              <SummaryMetric
+                label="Blocks generated"
+                value={plan.total_blocks}
+                icon={Layers3}
+              />
+              <SummaryMetric
+                label="Tasks scheduled"
+                value={plan.total_tasks_scheduled}
+                icon={CheckCircle2}
+                variant="success"
+              />
+              <SummaryMetric
+                label="Tasks dropped"
+                value={plan.tasks_dropped}
+                sub={plan.tasks_dropped > 0 ? 'No suitable window' : undefined}
+                icon={XCircle}
+                variant={plan.tasks_dropped > 0 ? 'warning' : 'default'}
+              />
+              <SummaryMetric
+                label="Joint blocks"
+                value={plan.joint_blocks}
+                sub="Multi-dept"
+                icon={Database}
+              />
+              <SummaryMetric
+                label="Avg efficiency"
+                value={`${plan.avg_efficiency}%`}
+                icon={Zap}
+                variant={
+                  plan.avg_efficiency >= 75
+                    ? 'success'
+                    : plan.avg_efficiency >= 50
+                      ? 'default'
+                      : 'warning'
+                }
+              />
+              <SummaryMetric
+                label="Asset availability"
+                value={`${plan.asset_availability_pct}%`}
+                icon={TrainFront}
+              />
+            </div>
+
+            {/* Dropped tasks warning */}
+            {plan.tasks_dropped > 0 && (
+              <div className="pgv-dropped-warning" role="alert">
+                <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+                <div>
+                  <strong>
+                    {plan.tasks_dropped} task
+                    {plan.tasks_dropped !== 1 ? 's were' : ' was'} not
+                    scheduled.
+                  </strong>
+                  <p>
+                    These tasks could not fit into any available COA block
+                    window within the planning horizon. Review the task
+                    durations and available windows, or extend the planning
+                    horizon.
+                  </p>
+                </div>
+              </div>
+            )}
+          </section>
+
+          {/* ── Step 4: Block cards ──────────────────────────────────────── */}
+          <section
+            className="pgv-step"
+            aria-labelledby="pgv-blocks-heading"
+          >
+            <div className="pgv-section-header">
+              <div>
+                <p className="shell-eyebrow">Step 4</p>
+                <h3 id="pgv-blocks-heading">Generated Blocks</h3>
+              </div>
+              <span className="panel-meta">
+                {plan.blocks.length} block
+                {plan.blocks.length !== 1 ? 's' : ''} ·{' '}
+                {plan.joint_blocks} joint
+              </span>
+            </div>
+
+            <div className="pgv-block-cards-grid">
+              {plan.blocks.map((block) => (
+                <BlockCard
+                  key={block.id}
+                  block={block}
+                  tasks={tasks}
+                  selected={selectedBlockId === block.id}
+                  onSelect={() => setSelectedBlockId(block.id)}
+                />
+              ))}
+            </div>
+          </section>
+
+          {/* ── Timeline ─────────────────────────────────────────────────── */}
+          <section className="pgv-step" aria-labelledby="pgv-timeline-heading">
+            <div className="pgv-section-header">
+              <div>
+                <p className="shell-eyebrow">Step 4 · Visual</p>
+                <h3 id="pgv-timeline-heading">Planning Timeline</h3>
+              </div>
+              <div className="pgv-section-header-actions">
+                {selectedBlock && (
+                  <span className="panel-meta">
+                    Selected: {selectedBlock.section_code}{' '}
+                    {selectedBlock.start_time}–{selectedBlock.end_time}
+                  </span>
+                )}
+                <button
+                  className="pgv-toggle-btn"
+                  type="button"
+                  onClick={() => setShowTimeline((v) => !v)}
+                  aria-expanded={showTimeline}
+                >
+                  {showTimeline ? (
+                    <ChevronUp className="h-3.5 w-3.5" />
+                  ) : (
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  )}
+                  {showTimeline ? 'Collapse' : 'Expand'}
+                </button>
+              </div>
+            </div>
+
+            {showTimeline && (
+              <Panel
+                title="Time — section layout"
+                actions={
+                  <span className="panel-meta">
+                    {plan.blocks.length} block
+                    {plan.blocks.length !== 1 ? 's' : ''}
+                  </span>
+                }
+              >
+                <Timeline
+                  blocks={plan.blocks}
+                  trains={trains}
+                  windows={windows}
+                  selectedId={selectedBlockId}
+                  onSelect={setSelectedBlockId}
+                />
+
+                {coaLoading && (
+                  <div className="planning-loading">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading COA timetable context…
+                  </div>
+                )}
+
+                {coaError && (
+                  <div className="planning-inline-error" role="alert">
+                    <AlertTriangle className="h-4 w-4" />
+                    {coaError}
+                    <button type="button" onClick={() => void loadCoa()}>
+                      Retry
+                    </button>
+                  </div>
+                )}
+              </Panel>
+            )}
+          </section>
+        </>
+      )}
+
+      {/* ── COA operational context (always visible after data loads) ─────── */}
+      <section className="pgv-step" aria-labelledby="pgv-coa-heading">
+        <div className="pgv-section-header">
+          <div>
+            <p className="shell-eyebrow">Operational Context</p>
+            <h3 id="pgv-coa-heading">Train Operations · COA</h3>
+          </div>
+          <div className="pgv-section-header-actions">
+            <span className="panel-meta">{startDate}</span>
+            <button
+              className="pgv-icon-btn"
+              type="button"
+              onClick={() => void loadCoa()}
+              aria-label="Refresh COA data"
+              title="Refresh COA data"
+              disabled={coaLoading}
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+            </button>
+            <button
+              className="pgv-toggle-btn"
+              type="button"
+              onClick={() => setShowCoaContext((v) => !v)}
+              aria-expanded={showCoaContext}
+            >
+              {showCoaContext ? (
+                <ChevronUp className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronDown className="h-3.5 w-3.5" />
+              )}
+              {showCoaContext ? 'Collapse' : 'Expand'}
+            </button>
+          </div>
+        </div>
+
+        {showCoaContext && (
+          <div className="planning-context-grid">
+            {/* Train movements */}
+            <Panel
+              title="Train movements"
+              actions={
+                <span className="panel-meta">
+                  {coaLoading ? 'Loading…' : `${trains.length} trains`}
+                </span>
+              }
+            >
+              {coaLoading ? (
+                <div className="planning-loading">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading train movements
+                </div>
+              ) : coaError ? (
+                <div className="planning-inline-error" role="alert">
+                  <AlertTriangle className="h-4 w-4" />
+                  {coaError}
+                  <button type="button" onClick={() => void loadCoa()}>
+                    Retry
+                  </button>
+                </div>
+              ) : trains.length > 0 ? (
+                <div className="planning-train-list">
+                  {trains.slice(0, 12).map((t) => (
+                    <div className="planning-train-row" key={t.id}>
+                      <span className="train-time">{t.entry_time}</span>
+                      <span className="train-line">
+                        <TrainFront className="h-3.5 w-3.5" aria-hidden="true" />
+                        {t.train_no}
+                        <small>
+                          {t.train_name ?? t.train_type} · {t.direction}
+                        </small>
+                      </span>
+                      <span className={`train-priority is-${t.train_priority}`}>
+                        {t.train_priority}
+                      </span>
+                      <span>{t.exit_time}</span>
+                    </div>
+                  ))}
+                  {trains.length > 12 && (
+                    <p className="pgv-more-note">
+                      +{trains.length - 12} more trains
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <EmptyState label="No train movements for this date and scope." />
+              )}
+            </Panel>
+
+            {/* Available windows */}
+            <Panel
+              title="Available COA windows"
+              actions={
+                <span className="panel-meta">
+                  {coaLoading ? 'Loading…' : `${windows.length} available`}
+                </span>
+              }
+            >
+              {coaLoading ? (
+                <div className="planning-loading">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading block windows
+                </div>
+              ) : windows.length > 0 ? (
+                <div className="planning-window-list">
+                  {windows.slice(0, 10).map((wnd) => (
+                    <div className="planning-window-row" key={wnd.id}>
+                      <span className="window-time">
+                        {wnd.start_time} – {wnd.end_time}
+                      </span>
+                      <span>Section {wnd.section_id}</span>
+                      <span>{wnd.duration_minutes} min</span>
+                      <span className="pgv-window-type">{wnd.window_type}</span>
+                    </div>
+                  ))}
+                  {windows.length > 10 && (
+                    <p className="pgv-more-note">
+                      +{windows.length - 10} more windows
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <EmptyState label="No available windows for the current date and scope." />
+              )}
+            </Panel>
+          </div>
         )}
-      </div>
-    </Panel>
+      </section>
+    </div>
   )
 }
