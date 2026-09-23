@@ -4090,3 +4090,921 @@ select:focus-visible {
     gap: 8px;
   }
 }
+
+/* =========================================================
+   MISSION 9 — PLAN HISTORY ARCHIVE (phv-*)
+   ========================================================= */
+
+/* ── Page-level adjustments when drawer is open ──────────── */
+
+.phv-has-drawer {
+  /* allow the drawer to layer on top */
+}
+
+/* ── Header actions ──────────────────────────────────────── */
+
+.phv-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.phv-limit-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.phv-limit-select {
+  min-width: 115px;
+  padding: 5px 7px;
+  font-size: 11px;
+}
+
+/* ── Aggregate metrics strip ─────────────────────────────── */
+
+.phv-metrics-strip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  padding: 10px 14px;
+}
+
+.phv-metric {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 14px;
+  border-right: 1px solid var(--border);
+}
+
+.phv-metric:last-of-type {
+  border-right: 0;
+}
+
+.phv-metric-icon {
+  display: grid;
+  height: 24px;
+  width: 24px;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.phv-metric-label {
+  display: block;
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.phv-metric-value {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-primary);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.phv-metrics-note {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+/* ── Filter bar ──────────────────────────────────────────── */
+
+.phv-filter-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-inset, #09141d);
+  padding: 10px 14px;
+}
+
+.phv-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1;
+  min-width: 180px;
+  color: var(--text-muted);
+}
+
+.phv-search-input {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+}
+
+.phv-search-input::placeholder {
+  color: var(--text-muted);
+}
+
+.phv-filter-fields {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.phv-filter-field {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-muted);
+}
+
+.phv-filter-select,
+.phv-filter-date {
+  min-height: 30px;
+  padding: 4px 7px;
+  font-size: 11px;
+}
+
+.phv-clear-btn {
+  gap: 4px;
+}
+
+.phv-filter-count {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+/* ── Plan archive table ──────────────────────────────────── */
+
+.phv-table-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Column header */
+.phv-table-head {
+  display: grid;
+  grid-template-columns:
+    80px        /* Run ID */
+    130px       /* Schedule date */
+    80px        /* Horizon */
+    120px       /* Generated */
+    55px        /* Blocks */
+    55px        /* Tasks */
+    55px        /* Joint */
+    110px       /* Departments */
+    90px        /* Avg eff */
+    56px;       /* Actions */
+  align-items: center;
+  gap: 6px;
+  border-bottom: 1px solid var(--border);
+  padding: 7px 0;
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  background: rgba(9, 20, 29, 0.3);
+}
+
+/* Plan run group (wraps row + expanded area) */
+.phv-run-group {
+  border-bottom: 1px solid rgba(32, 51, 64, 0.6);
+}
+
+.phv-run-group:last-child {
+  border-bottom: 0;
+}
+
+.phv-run-group.is-selected > .phv-run-row {
+  background: rgba(73, 197, 193, 0.04);
+}
+
+/* Summary row */
+.phv-run-row {
+  display: grid;
+  grid-template-columns:
+    80px
+    130px
+    80px
+    120px
+    55px
+    55px
+    55px
+    110px
+    90px
+    56px;
+  align-items: center;
+  gap: 6px;
+  min-height: 46px;
+  padding: 6px 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+  transition: background var(--transition-fast);
+}
+
+.phv-run-row:hover {
+  background: rgba(73, 197, 193, 0.03);
+}
+
+.phv-run-id {
+  color: var(--text-primary);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.phv-run-date {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.phv-horizon-badge {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-muted);
+  padding: 2px 7px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.phv-run-generated {
+  color: var(--text-muted);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+}
+
+.phv-run-num {
+  color: var(--text-primary);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.phv-joint-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  border: 1px solid rgba(73, 197, 193, 0.45);
+  border-radius: 999px;
+  color: var(--accent);
+  padding: 1px 5px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.phv-zero {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.phv-run-depts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.phv-run-actions {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+/* Dept badge (compact, in table) */
+.phv-dept-badge {
+  display: inline-flex;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 999px;
+  padding: 1px 5px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+/* ── Action buttons ──────────────────────────────────────── */
+
+.phv-action-btn {
+  display: grid;
+  height: 24px;
+  width: 24px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast),
+    color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.phv-action-btn:hover {
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+}
+
+.phv-inspect-btn.is-active {
+  border-color: rgba(73, 197, 193, 0.5);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* ── Efficiency bar ──────────────────────────────────────── */
+
+.phv-eff-bar {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.phv-eff-track {
+  height: 5px;
+  flex: 1;
+  min-width: 40px;
+  overflow: hidden;
+  border-radius: 1px;
+  background: var(--border);
+}
+
+.phv-eff-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  transition: width 200ms ease;
+}
+
+.phv-eff-bar.is-good .phv-eff-track span {
+  background: var(--success);
+}
+
+.phv-eff-bar.is-mid .phv-eff-track span {
+  background: var(--warning);
+}
+
+.phv-eff-bar.is-low .phv-eff-track span {
+  background: var(--critical);
+}
+
+.phv-eff-bar b {
+  color: var(--text-secondary);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.phv-eff-bar.is-good b { color: var(--success); }
+.phv-eff-bar.is-mid b  { color: var(--warning); }
+.phv-eff-bar.is-low b  { color: var(--critical); }
+
+/* ── Expanded run block list ─────────────────────────────── */
+
+.phv-run-expand-area {
+  border-top: 1px solid var(--border);
+  background: rgba(9, 20, 29, 0.35);
+  padding: 10px 0 6px;
+}
+
+.phv-run-blocks {
+  min-width: 0;
+}
+
+.phv-run-blocks-header {
+  display: grid;
+  grid-template-columns:
+    100px 80px 120px 120px 80px 55px 100px 90px;
+  gap: 8px;
+  padding: 5px 10px;
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+}
+
+.phv-run-block-row {
+  display: grid;
+  grid-template-columns:
+    100px 80px 120px 120px 80px 55px 100px 90px;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-bottom: 1px solid rgba(32, 51, 64, 0.45);
+  color: var(--text-secondary);
+  font-size: 11px;
+  transition: background var(--transition-fast);
+}
+
+.phv-run-block-row:last-child {
+  border-bottom: 0;
+}
+
+.phv-run-block-row:hover {
+  background: rgba(73, 197, 193, 0.025);
+}
+
+.phv-run-block-row.is-joint {
+  border-left: 2px solid var(--accent);
+}
+
+.phv-run-block-id {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-primary);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.phv-joint-chip {
+  border: 1px solid rgba(73, 197, 193, 0.4);
+  border-radius: 999px;
+  color: var(--accent);
+  padding: 0px 4px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.phv-mono {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+}
+
+.phv-dept-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+/* ── Empty states ────────────────────────────────────────── */
+
+.phv-empty-archive {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ── Skeleton ────────────────────────────────────────────── */
+
+.phv-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.phv-skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  border-bottom: 1px solid var(--border);
+  padding: 4px 0;
+}
+
+.phv-skeleton-row span {
+  display: block;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--surface-elevated);
+  animation: dashboard-shimmer 1.5s ease-in-out infinite;
+}
+
+/* ── Detail drawer ───────────────────────────────────────── */
+
+.phv-drawer-close {
+  display: grid;
+  height: 30px;
+  width: 30px;
+  flex-shrink: 0;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.phv-drawer-close:hover {
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+}
+
+.phv-drawer-section {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.phv-drawer-section:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.phv-drawer-section h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 13px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.phv-drawer-section-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-muted);
+  padding: 1px 5px;
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.phv-drawer-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.phv-drawer-info-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.phv-drawer-info-grid > div span {
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.phv-drawer-info-grid > div strong {
+  color: var(--text-secondary);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  word-break: break-all;
+}
+
+.phv-drawer-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.phv-drawer-metrics > div {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-inset, #09141d);
+  padding: 9px 10px;
+}
+
+.phv-drawer-metrics > div span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.phv-drawer-metrics > div strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-primary);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* Blocks section */
+.phv-drawer-blocks-section {
+  border-bottom: 0;
+}
+
+.phv-drawer-block {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 6px;
+  overflow: hidden;
+  transition: border-color var(--transition-fast);
+}
+
+.phv-drawer-block:last-child {
+  margin-bottom: 0;
+}
+
+.phv-drawer-block.is-joint {
+  border-left: 3px solid var(--accent);
+}
+
+.phv-drawer-block.is-open {
+  border-color: var(--border-strong);
+}
+
+.phv-drawer-block-toggle {
+  display: grid;
+  grid-template-columns: 85px 1fr auto auto auto 20px;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 9px 11px;
+  text-align: left;
+  font-size: 11px;
+  transition: background var(--transition-fast);
+}
+
+.phv-drawer-block-toggle:hover {
+  background: rgba(73, 197, 193, 0.03);
+}
+
+.phv-drawer-block-id {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-primary);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.phv-drawer-block-section {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.phv-drawer-block-time {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-secondary);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.phv-drawer-block-dur {
+  color: var(--text-muted);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.phv-drawer-block-tasks {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.phv-drawer-chevron {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* Block detail (expanded) */
+.phv-drawer-block-detail {
+  border-top: 1px solid var(--border);
+  background: rgba(9, 20, 29, 0.4);
+  padding: 12px 13px;
+}
+
+.phv-drawer-block-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.phv-drawer-block-metrics > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.phv-drawer-block-metrics > div span {
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.phv-drawer-block-metrics > div strong {
+  color: var(--text-secondary);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  font-weight: 500;
+  margin-top: 3px;
+}
+
+.phv-drawer-explanation {
+  border-left: 2px solid var(--accent);
+  padding-left: 10px;
+  margin-bottom: 12px;
+}
+
+.phv-drawer-explanation-label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.phv-drawer-explanation p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.phv-drawer-task-ids {
+  margin-top: 10px;
+}
+
+.phv-drawer-task-id-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 6px;
+}
+
+.phv-task-id-chip {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-muted);
+  padding: 2px 6px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+}
+
+/* ── Responsive ──────────────────────────────────────────── */
+
+@media (max-width: 1300px) {
+  .phv-table-head,
+  .phv-run-row {
+    grid-template-columns:
+      75px 115px 72px 105px 50px 50px 50px 90px 80px 50px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .phv-table-head,
+  .phv-run-row {
+    grid-template-columns:
+      75px 105px 70px 90px 48px 48px 48px 1fr;
+  }
+
+  /* hide avg efficiency and actions — they wrap to inner expand */
+  .phv-table-head > span:nth-child(9),
+  .phv-table-head > span:nth-child(10),
+  .phv-run-row > span:nth-child(9),
+  .phv-run-row > .phv-run-actions {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .phv-metrics-strip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .phv-metric {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+    padding-right: 0;
+    padding-bottom: 8px;
+  }
+
+  .phv-metrics-note {
+    grid-column: 1 / -1;
+    margin-left: 0;
+  }
+
+  .phv-table-head,
+  .phv-run-row {
+    grid-template-columns: 75px 100px 65px 1fr 48px;
+    font-size: 10px;
+  }
+
+  /* keep only run id, date, horizon, depts, and expand btn on small */
+  .phv-table-head > span:nth-child(4),
+  .phv-table-head > span:nth-child(5),
+  .phv-table-head > span:nth-child(6),
+  .phv-table-head > span:nth-child(7),
+  .phv-table-head > span:nth-child(9),
+  .phv-table-head > span:nth-child(10),
+  .phv-run-row > .phv-run-generated,
+  .phv-run-row > .phv-run-num,
+  .phv-run-row > .phv-joint-count,
+  .phv-run-row > .phv-zero,
+  .phv-run-row > .phv-inspect-btn {
+    display: none;
+  }
+
+  .phv-run-blocks-header,
+  .phv-run-block-row {
+    grid-template-columns: 80px 65px 1fr 1fr 55px;
+  }
+
+  .phv-run-blocks-header > span:nth-child(3),
+  .phv-run-blocks-header > span:nth-child(8),
+  .phv-run-block-row > span:nth-child(3),
+  .phv-run-block-row > span:last-child {
+    display: none;
+  }
+
+  .phv-drawer-metrics {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .phv-drawer-block-toggle {
+    grid-template-columns: 75px 1fr auto;
+  }
+
+  .phv-drawer-block-time,
+  .phv-drawer-block-dur,
+  .phv-drawer-block-tasks {
+    display: none;
+  }
+
+  .phv-drawer-block-metrics {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .phv-filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .phv-filter-fields {
+    gap: 6px;
+  }
+
+  .phv-filter-count {
+    margin-left: 0;
+  }
+
+  .phv-drawer-info-grid,
+  .phv-drawer-metrics {
+    grid-template-columns: 1fr 1fr;
+  }
+}
