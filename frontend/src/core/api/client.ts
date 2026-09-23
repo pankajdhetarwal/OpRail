@@ -38,7 +38,37 @@ export const api = {
     return request<TaskListResponse>(`/api/tasks/?${q.toString()}`)
   },
   taskDetail: (id: number) => request<Task>(`/api/tasks/${id}`),
-  taskExplain: (id: number) => request<{ shap_explanation: Record<string, number>; priority_score: number; task_code: string }>(`/api/tasks/explain/${id}`),
+  taskExplain: (id: number) =>
+  request<{
+    shap_explanation: {
+      shap_values: Record<string, number>
+      global_importance: Record<string, number>
+      model_version: string
+      bias: number
+      prediction: number
+      contribution_sum: number
+      error?: string
+      fallback?: {
+        total_score: number
+        label: string
+        breakdown: Record<
+          string,
+          {
+            raw?: number
+            raw_days?: number
+            normalized: number
+            weight: number
+            contribution: number
+          }
+        >
+      }
+    }
+    priority_score: number
+    task_code: string
+    task_id: number
+    section?: string | null
+    department?: string | null
+  }>(`/api/tasks/explain/${id}`),
   scoreAllTasks: () => request<{ updated: number; message: string }>('/api/tasks/score-all', { method: 'POST' }),
 
   tms: (params: URLSearchParams) => request<TaskListResponse>(`/api/tms/tasks?${params.toString()}`),
