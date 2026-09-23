@@ -145,6 +145,11 @@ export interface TrainSchedule {
   direction: string
 }
 
+export interface TrainScheduleList {
+  total: number
+  trains: TrainSchedule[]
+}
+
 export interface BlockWindow {
   id: number
   section_id: number

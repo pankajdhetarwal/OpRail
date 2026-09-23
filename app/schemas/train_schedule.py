@@ -1,4 +1,5 @@
 """app/schemas/train_schedule.py"""
+from typing import List
 from pydantic import BaseModel
 
 
@@ -15,3 +16,7 @@ class TrainScheduleOut(BaseModel):
     direction: str
 
     model_config = {"from_attributes": True}
+
+class TrainScheduleList(BaseModel):
+    total: int
+    trains: List[TrainScheduleOut]

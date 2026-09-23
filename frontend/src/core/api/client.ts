@@ -8,7 +8,7 @@ import type {
   Task,
   TaskListResponse,
   TimeSpaceResponse,
-  TrainSchedule,
+  TrainScheduleList,
 } from '../../types/api'
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -76,7 +76,7 @@ export const api = {
   tdms: (params: URLSearchParams) => request<TaskListResponse>(`/api/tdms/tasks?${params.toString()}`),
   simulateFault: () => request<{ message: string; task_code: string; section: string; ai_priority_score: number }>('/api/tdms/simulate-fault', { method: 'POST' }),
 
-  trains: (params: URLSearchParams) => request<TrainSchedule[]>(`/api/coa/trains?${params.toString()}`),
+  trains: (params: URLSearchParams) => request<TrainScheduleList>(`/api/coa/trains?${params.toString()}`),
   windows: (params: URLSearchParams) => request<BlockWindow[]>(`/api/coa/windows?${params.toString()}`),
 
   generatePlan: (body: unknown) => request<PlanGenerateResponse>('/api/plan/generate', { method: 'POST', body: JSON.stringify(body) }),

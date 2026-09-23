@@ -441,7 +441,7 @@ export function ConflictValidatorView() {
     setContextTrainsLoading(true)
     api
       .trains(params)
-      .then((trains) => setContextTrains(trains))
+      .then((res) => setContextTrains(res.trains))
       .catch(() => setContextTrains([]))
       .finally(() => setContextTrainsLoading(false))
   }, [selectedId, selectedEntry?.sectionId, selectedEntry?.date]) // eslint-disable-line react-hooks/exhaustive-deps

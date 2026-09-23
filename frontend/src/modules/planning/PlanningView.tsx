@@ -702,7 +702,7 @@ export function PlanningView() {
         api.trains(q),
         api.windows(wq),
       ])
-      setTrains(trainData)
+      setTrains(trainData.trains)
       setWindows(windowData)
     } catch (e: unknown) {
       setCoaError(
