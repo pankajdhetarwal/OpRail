@@ -3,7 +3,9 @@
   <p><strong>Smart India Hackathon 2026 | Problem Statement 26027</strong></p>
 
   <a href="https://youtu.be/Y8KzXUSgnt4" target="_blank">
-    <img src="https://img.youtube.com/vi/Y8KzXUSgnt4/maxresdefault.jpg" alt="Watch the Prototype Demonstration Video" width="600" />
+    <img src="https://img.shields.io/badge/YouTube-Watch_Demo_Video-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="Watch Video on YouTube" />
+    <br/><br/>
+    <img src="https://img.youtube.com/vi/Y8KzXUSgnt4/maxresdefault.jpg" alt="Watch the Prototype Demonstration Video" width="600" style="border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);" />
   </a>
   <br />
 </div>
