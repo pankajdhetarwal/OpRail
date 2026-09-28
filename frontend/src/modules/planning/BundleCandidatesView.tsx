@@ -296,8 +296,18 @@ export function BundleCandidatesView() {
                         </td>
                         <td>
                           <span
-                            className={`bcv-dept-badge ${deptAccent[task.department.code] ?? ''}`}
+                            className="task-dept"
+                            style={{ color: task.department.color_hex }}
                           >
+                            <i
+                              style={{
+                                height: 6,
+                                width: 6,
+                                borderRadius: '50%',
+                                background: task.department.color_hex,
+                                display: 'inline-block',
+                              }}
+                            />
                             {task.department.code}
                           </span>
                         </td>
@@ -430,8 +440,18 @@ export function BundleCandidatesView() {
                           <div key={t.id} className="bcv-bundled-task-row">
                             <span className="bcv-mono">{t.task_code}</span>
                             <span
-                              className={`bcv-dept-badge-sm ${deptAccent[t.department.code] ?? ''}`}
+                              className="task-dept"
+                              style={{ color: t.department.color_hex }}
                             >
+                              <i
+                                style={{
+                                  height: 6,
+                                  width: 6,
+                                  borderRadius: '50%',
+                                  background: t.department.color_hex,
+                                  display: 'inline-block',
+                                }}
+                              />
                               {t.department.code}
                             </span>
                             <span className="bcv-task-dur">{t.duration_minutes}m</span>

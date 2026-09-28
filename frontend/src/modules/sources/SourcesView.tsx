@@ -299,7 +299,7 @@ export function SourcesView({ activeTab }: { activeTab?: SourceTab }) {
           <div className="src-summary-grid">
             <div className="src-summary-card">
               <span className="src-summary-label">Total Records</span>
-              <strong className="src-summary-value text-slate-100">{taskStats.total}</strong>
+              <strong className="src-summary-value text-slate-700">{taskStats.total}</strong>
               <span className="src-summary-sub">Current backend feed</span>
             </div>
             <div className="src-summary-card is-critical">
@@ -322,12 +322,12 @@ export function SourcesView({ activeTab }: { activeTab?: SourceTab }) {
           <div className="src-summary-grid coa-grid">
             <div className="src-summary-card is-coa">
               <span className="src-summary-label">Train Schedules</span>
-              <strong className="src-summary-value text-cyan-300">{totalTrains.toLocaleString()}</strong>
+              <strong className="src-summary-value text-teal-700">{totalTrains.toLocaleString()}</strong>
               <span className="src-summary-sub">Showing {trains.length} of {totalTrains.toLocaleString()}</span>
             </div>
             <div className="src-summary-card is-coa">
               <span className="src-summary-label">Available Windows</span>
-              <strong className="src-summary-value text-emerald-300">{windows.length}</strong>
+              <strong className="src-summary-value text-emerald-700">{windows.length}</strong>
               <span className="src-summary-sub">Maintenance opportunities</span>
             </div>
           </div>
@@ -441,20 +441,20 @@ export function SourcesView({ activeTab }: { activeTab?: SourceTab }) {
                   <tbody>
                     {filteredTasks.map(task => (
                       <tr key={task.id}>
-                        <td><span className="src-mono font-semibold text-cyan-200">{task.task_code}</span></td>
+                        <td><span className="src-mono font-semibold text-teal-700">{task.task_code}</span></td>
                         <td>
                           <Badge className={deptAccent[task.department.code] || 'border-slate-600'}>
                             {task.department.code}
                           </Badge>
                         </td>
-                        <td className="text-slate-300">{task.section.name}</td>
+                        <td className="text-slate-700">{task.section.name}</td>
                         <td>
                           <div className="flex items-center gap-2">
                             <span className={`h-2 w-2 rounded-full ${severityColor(task.severity)}`} />
-                            <span className="font-medium text-slate-200">{task.severity}</span>
+                            <span className="font-medium text-slate-800">{task.severity}</span>
                           </div>
                         </td>
-                        <td><span className="src-mono text-slate-300">{task.priority_score.toFixed(1)}</span></td>
+                        <td><span className="src-mono text-slate-700">{task.priority_score.toFixed(1)}</span></td>
                         <td><Badge className={statusClass(task.status)}>{task.status}</Badge></td>
                       </tr>
                     ))}
@@ -487,11 +487,11 @@ export function SourcesView({ activeTab }: { activeTab?: SourceTab }) {
                     <tbody>
                       {filteredTrains.map(train => (
                         <tr key={train.id}>
-                          <td><span className="src-mono font-semibold text-cyan-200">{train.train_no}</span></td>
-                          <td className="text-slate-300">{train.train_type}</td>
-                          <td className="text-slate-300">{train.train_priority}</td>
-                          <td className="src-mono text-slate-400">{train.entry_time}</td>
-                          <td className="src-mono text-slate-400">{train.exit_time}</td>
+                          <td><span className="src-mono font-semibold text-teal-700">{train.train_no}</span></td>
+                          <td className="text-slate-700">{train.train_type}</td>
+                          <td className="text-slate-700">{train.train_priority}</td>
+                          <td className="src-mono text-slate-600">{train.entry_time}</td>
+                          <td className="src-mono text-slate-600">{train.exit_time}</td>
                           <td className="src-mono text-slate-500">{train.schedule_date}</td>
                         </tr>
                       ))}
@@ -499,7 +499,7 @@ export function SourcesView({ activeTab }: { activeTab?: SourceTab }) {
                   </table>
                 )}
                 {!trainSearchQuery && trains.length < totalTrains && (
-                  <div className="p-4 border-t border-slate-700/50 flex justify-center">
+                  <div className="p-4 border-t border-slate-200 flex justify-center">
                     <button 
                       type="button" 
                       className="src-sim-btn" 
@@ -511,7 +511,7 @@ export function SourcesView({ activeTab }: { activeTab?: SourceTab }) {
                   </div>
                 )}
                 {!trainSearchQuery && trains.length >= totalTrains && trains.length > 0 && (
-                  <div className="p-4 border-t border-slate-700/50 text-center text-sm text-slate-500">
+                  <div className="p-4 border-t border-slate-200 text-center text-sm text-slate-500">
                     All records loaded
                   </div>
                 )}
@@ -530,14 +530,14 @@ export function SourcesView({ activeTab }: { activeTab?: SourceTab }) {
                     {windows.map(window => (
                       <div key={window.id} className="src-window-card">
                         <div className="flex items-center justify-between mb-2">
-                          <span className="src-mono text-xs font-semibold text-emerald-300">Sec {window.section_id}</span>
+                          <span className="src-mono text-xs font-semibold text-emerald-700">Sec {window.section_id}</span>
                           <span className="src-mono text-[10px] text-slate-500"><Calendar className="inline h-3 w-3 mr-1"/>{window.schedule_date}</span>
                         </div>
-                        <div className="text-sm font-medium text-slate-200 mb-1">
-                          <Clock3 className="inline h-3.5 w-3.5 mr-1.5 text-slate-400"/>
+                        <div className="text-sm font-medium text-slate-800 mb-1">
+                          <Clock3 className="inline h-3.5 w-3.5 mr-1.5 text-slate-600"/>
                           {window.start_time} – {window.end_time}
                         </div>
-                        <div className="text-xs text-slate-400">
+                        <div className="text-xs text-slate-600">
                           {window.duration_minutes} min duration · {window.window_type}
                         </div>
                       </div>

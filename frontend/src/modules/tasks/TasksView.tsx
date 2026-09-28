@@ -1314,14 +1314,16 @@ const [detailError, setDetailError] = useState('')
 
                       <td>
                         <span
-                          className={`task-dept ${
-                            deptAccent[task.department.code] || ''
-                          }`}
+                          className="task-dept"
+                          style={{ color: task.department.color_hex }}
                         >
                           <i
                             style={{
-                              background:
-                                task.department.color_hex,
+                              height: 6,
+                              width: 6,
+                              borderRadius: '50%',
+                              background: task.department.color_hex,
+                              display: 'inline-block',
                             }}
                           />
                           {task.department.code}

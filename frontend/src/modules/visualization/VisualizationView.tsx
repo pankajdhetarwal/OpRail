@@ -221,25 +221,25 @@ export function VisualizationView() {
     <Panel title="Time-Space Diagram">
       <div className="space-y-4">
         <div className="grid gap-3 lg:grid-cols-[1.25fr_1.25fr_0.8fr_auto]">
-          <label className="text-xs text-slate-400">
-            <span className="mb-1.5 block font-semibold uppercase tracking-[0.12em] text-slate-500">Primary train</span>
+          <label className="text-xs text-gray-700">
+            <span className="mb-1.5 block font-semibold uppercase tracking-[0.12em] text-gray-500">Primary train</span>
             <select className="input h-10 w-full" value={activeTrain?.train_number ?? ''} onChange={(event) => setSelectedTrain(event.target.value)} disabled={!data}>
               {data?.trains.map((train) => <option key={train.train_number} value={train.train_number}>Train {train.train_number}</option>)}
             </select>
           </label>
-          <label className="text-xs text-slate-400">
-            <span className="mb-1.5 block font-semibold uppercase tracking-[0.12em] text-slate-500">Compare with</span>
+          <label className="text-xs text-gray-700">
+            <span className="mb-1.5 block font-semibold uppercase tracking-[0.12em] text-gray-500">Compare with</span>
             <select className="input h-10 w-full" value={compareTrain} onChange={(event) => setCompareTrain(event.target.value)} disabled={!data}>
               <option value="">None</option>
               {data?.trains.filter((train) => train.train_number !== activeTrain?.train_number).map((train) => <option key={train.train_number} value={train.train_number}>Train {train.train_number}</option>)}
             </select>
           </label>
-          <label className="text-xs text-slate-400">
-            <span className="mb-1.5 block font-semibold uppercase tracking-[0.12em] text-slate-500">Date</span>
+          <label className="text-xs text-gray-700">
+            <span className="mb-1.5 block font-semibold uppercase tracking-[0.12em] text-gray-500">Date</span>
             <input className="input h-10 w-full" type="date" value={date} onChange={(event) => setDate(event.target.value)} />
           </label>
           <div className="flex items-end">
-            <button className="h-10 w-full rounded border border-cyan-400/50 bg-cyan-400/10 px-4 text-sm font-semibold text-cyan-100 hover:bg-cyan-400/15 disabled:opacity-50" onClick={runDiagram} disabled={loading}>
+            <button className="h-10 w-full rounded border border-teal-600 bg-teal-600 px-4 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-50" onClick={runDiagram} disabled={loading}>
               {loading ? 'Generating…' : 'Generate Diagram'}
             </button>
           </div>
@@ -258,9 +258,9 @@ export function VisualizationView() {
                 ['Maintenance blocks', String(data.blocks.length), ''],
                 ['Time window', '00:00 – 24:00', 'full day'],
               ].map(([label, value, hint]) => (
-                <div key={label} className="rounded border border-slate-800 bg-slate-950/70 px-4 py-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">{label}</p>
-                  <p className="mt-1 text-xl font-semibold text-slate-100">{value}</p>
+                <div key={label} className="rounded border border-gray-300 bg-white px-4 py-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-500">{label}</p>
+                  <p className="mt-1 text-xl font-semibold text-gray-900">{value}</p>
                   {hint ? <p className="mt-1 text-[10px] text-slate-600">{hint}</p> : null}
                 </div>
               ))}
@@ -271,11 +271,11 @@ export function VisualizationView() {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-300/70">Maintenance block</p>
-                    <p className="mt-1 text-sm font-semibold text-slate-100">
+                    <p className="mt-1 text-sm font-semibold text-gray-900">
                       {selectedBlock?.start_station} · {getStationName(selectedBlock?.start_station ?? '') || 'Station'} → {selectedBlock?.end_station} · {getStationName(selectedBlock?.end_station ?? '') || 'Station'}
                     </p>
                   </div>
-                  <div className="text-right text-xs text-slate-400">
+                  <div className="text-right text-xs text-gray-700">
                     <div>{formatMinute(selectedBlock?.start_minute ?? 0)} → {formatMinute(selectedBlock?.end_minute ?? 0)}</div>
                     <div>{Math.max(0, (selectedBlock?.end_minute ?? 0) - (selectedBlock?.start_minute ?? 0))} minutes</div>
                   </div>
@@ -283,7 +283,7 @@ export function VisualizationView() {
                 {data.blocks.length > 1 ? (
                   <div className="mt-3 flex flex-wrap gap-2">
                     {data.blocks.map((block, index) => (
-                      <button key={`${block.start_station}-${block.end_station}-${block.start_minute}-${index}`} type="button" className={`rounded border px-2 py-1 text-xs ${index === selectedBlockIndex ? 'border-amber-400/50 bg-amber-400/10 text-amber-100' : 'border-slate-700 bg-slate-900 text-slate-400'}`} onClick={() => setSelectedBlockIndex(index)}>
+                      <button key={`${block.start_station}-${block.end_station}-${block.start_minute}-${index}`} type="button" className={`rounded border px-2 py-1 text-xs ${index === selectedBlockIndex ? 'border-amber-400 bg-amber-100 text-amber-900' : 'border-gray-400 bg-gray-100 text-gray-700'}`} onClick={() => setSelectedBlockIndex(index)}>
                         {block.start_station} → {block.end_station} · {formatMinute(block.start_minute)}–{formatMinute(block.end_minute)}
                       </button>
                     ))}
@@ -292,13 +292,13 @@ export function VisualizationView() {
               </div>
             ) : null}
 
-            <section className="overflow-hidden rounded border border-slate-800 bg-slate-950/70">
-              <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
+            <section className="overflow-hidden rounded border border-gray-300 bg-white">
+              <div className="flex items-center justify-between border-b border-gray-300 px-4 py-3">
                 <div>
-                  <p className="text-sm font-semibold text-slate-100">Time-Space Diagram</p>
-                  <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-500">Full train schedules · scroll horizontally to inspect the complete movement</p>
+                  <p className="text-sm font-semibold text-gray-900">Time-Space Diagram</p>
+                  <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-gray-500">Full train schedules · scroll horizontally to inspect the complete movement</p>
                 </div>
-                <div className="hidden items-center gap-2 text-xs text-slate-500 md:flex">← → Scroll timeline</div>
+                <div className="hidden items-center gap-2 text-xs text-gray-500 md:flex">← → Scroll timeline</div>
               </div>
 
               <div className="overflow-x-auto px-2 pb-3">
@@ -373,30 +373,30 @@ export function VisualizationView() {
               </div>
             </section>
 
-            <div className="flex flex-wrap gap-x-6 gap-y-2 px-1 text-xs text-slate-400">
+            <div className="flex flex-wrap gap-x-6 gap-y-2 px-1 text-xs text-gray-700">
               <span className="inline-flex items-center gap-2"><i className="h-2.5 w-6 rounded bg-cyan-400" /> Primary train {activeTrain?.train_number ?? '—'}</span>
               {comparisonTrain ? <span className="inline-flex items-center gap-2"><i className="h-2.5 w-6 rounded bg-green-400" /> Comparison train {comparisonTrain.train_number}</span> : null}
               <span className="inline-flex items-center gap-2"><i className="h-3 w-7 rounded border border-red-400/80 bg-red-400/15" /> Maintenance block ({formatMinute(selectedBlock?.start_minute ?? 0)} – {formatMinute(selectedBlock?.end_minute ?? 0)})</span>
             </div>
 
             <div className="grid gap-3 md:grid-cols-3">
-              <div className="rounded border border-cyan-400/20 bg-slate-950/70 p-4">
+              <div className="rounded border border-cyan-500 bg-white p-4">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-300">Primary train</p>
-                <p className="mt-2 text-lg font-semibold text-slate-100">{activeTrain?.train_number ?? '—'}</p>
-                <p className="mt-1 text-sm text-slate-300">{activeTrain?.points[0]?.station ?? '—'} → {activeTrain?.points.at(-1)?.station ?? '—'}</p>
-                <p className="mt-2 text-xs text-slate-500">{primaryPoints.length} plotted points · full schedule</p>
+                <p className="mt-2 text-lg font-semibold text-gray-900">{activeTrain?.train_number ?? '—'}</p>
+                <p className="mt-1 text-sm text-gray-800">{activeTrain?.points[0]?.station ?? '—'} → {activeTrain?.points.at(-1)?.station ?? '—'}</p>
+                <p className="mt-2 text-xs text-gray-500">{primaryPoints.length} plotted points · full schedule</p>
               </div>
-              <div className="rounded border border-green-400/20 bg-slate-950/70 p-4">
+              <div className="rounded border border-green-500 bg-white p-4">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-green-300">Comparison train</p>
-                <p className="mt-2 text-lg font-semibold text-slate-100">{comparisonTrain?.train_number ?? 'None'}</p>
-                <p className="mt-1 text-sm text-slate-300">{comparisonTrain?.points[0]?.station ?? '—'} → {comparisonTrain?.points.at(-1)?.station ?? '—'}</p>
-                <p className="mt-2 text-xs text-slate-500">{comparePoints.length} plotted points · full schedule</p>
+                <p className="mt-2 text-lg font-semibold text-gray-900">{comparisonTrain?.train_number ?? 'None'}</p>
+                <p className="mt-1 text-sm text-gray-800">{comparisonTrain?.points[0]?.station ?? '—'} → {comparisonTrain?.points.at(-1)?.station ?? '—'}</p>
+                <p className="mt-2 text-xs text-gray-500">{comparePoints.length} plotted points · full schedule</p>
               </div>
               <div className="rounded border border-red-400/30 bg-red-400/[0.035] p-4">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-red-300">Maintenance block</p>
-                <p className="mt-2 text-lg font-semibold text-slate-100">{formatMinute(selectedBlock?.start_minute ?? 0)} – {formatMinute(selectedBlock?.end_minute ?? 0)}</p>
-                <p className="mt-1 text-sm text-slate-300">{selectedBlock?.start_station ?? '—'} → {selectedBlock?.end_station ?? '—'}</p>
-                <p className="mt-2 text-xs text-slate-500">{Math.max(0, (selectedBlock?.end_minute ?? 0) - (selectedBlock?.start_minute ?? 0))} minutes · infrastructure restriction</p>
+                <p className="mt-2 text-lg font-semibold text-gray-900">{formatMinute(selectedBlock?.start_minute ?? 0)} – {formatMinute(selectedBlock?.end_minute ?? 0)}</p>
+                <p className="mt-1 text-sm text-gray-800">{selectedBlock?.start_station ?? '—'} → {selectedBlock?.end_station ?? '—'}</p>
+                <p className="mt-2 text-xs text-gray-500">{Math.max(0, (selectedBlock?.end_minute ?? 0) - (selectedBlock?.start_minute ?? 0))} minutes · infrastructure restriction</p>
               </div>
             </div>
           </>
