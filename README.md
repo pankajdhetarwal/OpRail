@@ -2,9 +2,9 @@
   <h1>OpRail: AI-Powered Automatic Block Planning</h1>
   <p><strong>Smart India Hackathon 2026 | Problem Statement 26027</strong></p>
 
-  <p>
-    <a href="https://youtu.be/Y8KzXUSgnt4" target="_blank"><strong>Watch the Prototype Demonstration Video</strong></a>
-  </p>
+  <a href="https://youtu.be/Y8KzXUSgnt4" target="_blank">
+    <img src="https://img.youtube.com/vi/Y8KzXUSgnt4/maxresdefault.jpg" alt="Watch the Prototype Demonstration Video" width="600" />
+  </a>
   <br />
 </div>
 
