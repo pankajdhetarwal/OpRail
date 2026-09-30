@@ -21,7 +21,7 @@ import type { LucideIcon } from 'lucide-react'
 import { api } from '../../core/api/client'
 import type { Task } from '../../types/api'
 import { EmptyState, OperationalStatus, Panel } from '../../components/common'
-import { deptAccent, statusClass } from '../../utils/format'
+import { statusClass } from '../../utils/format'
 
 const pageSize = 50
 

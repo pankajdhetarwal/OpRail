@@ -32,7 +32,6 @@ import {
 
 import { api } from '../../core/api/client'
 import type { BundleCandidate, Task } from '../../types/api'
-import { deptAccent } from '../../utils/format'
 
 type BundleMethod = 'pairwise' | 'dbscan'
 
