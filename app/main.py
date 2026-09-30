@@ -63,10 +63,17 @@ def health_check():
 
 
 # Mount static directory for JS/CSS assets
+import os
 app.mount("/static", StaticFiles(directory="static"), name="static")
+if os.path.isdir("static/assets"):
+    app.mount("/assets", StaticFiles(directory="static/assets"), name="assets")
 
 
 @app.get("/", tags=["Dashboard"])
 def serve_dashboard():
     """Serve the main frontend dashboard."""
     return FileResponse("static/index.html")
+
+@app.get("/favicon.svg", include_in_schema=False)
+def serve_favicon():
+    return FileResponse("static/favicon.svg")
