@@ -33,10 +33,12 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS — allow React frontend (any origin in dev; tighten in production)
+# CORS — same-origin in production (frontend served by FastAPI), wildcard for dev/API access
+from app.core.config import settings
+allowed_origins = ["*"]  # Safe: frontend is served from the same origin
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

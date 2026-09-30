@@ -1,0 +1,39 @@
+# ============================================================================
+# fly.toml — Fly.io Application Configuration for OpRail
+# Docs: https://fly.io/docs/reference/configuration/
+# ============================================================================
+
+app = "oprail"
+primary_region = "bom"  # Mumbai — closest to Indian Railways users
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  ENVIRONMENT = "production"
+  SEVERITY_WEIGHT = "0.40"
+  OVERDUE_WEIGHT = "0.30"
+  TRAIN_DENSITY_WEIGHT = "0.15"
+  ASSET_CRITICALITY_WEIGHT = "0.15"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+  [http_service.concurrency]
+    type = "requests"
+    hard_limit = 250
+    soft_limit = 200
+
+[[vm]]
+  memory = "1gb"
+  cpu_kind = "shared"
+  cpus = 1
+
+[[statics]]
+  guest_path = "/app/static"
+  url_prefix = "/static"

@@ -1,0 +1,50 @@
+# OpRail — .dockerignore
+# Keep the Docker build context small and fast
+
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+venv/
+.venv/
+env/
+.pytest_cache/
+htmlcov/
+.coverage
+*.egg-info/
+
+# Environment (secrets must NOT be baked into images)
+.env
+.env.local
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Database files (local dev only)
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docs / presentations
+*.pdf
+*.pptx
+*.png
+*.zip
+
+# Agents config
+.agents/

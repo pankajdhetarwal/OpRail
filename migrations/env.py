@@ -20,7 +20,7 @@ import app.models  # noqa — registers all ORM models with Base
 config = context.config
 
 # Override the sqlalchemy.url with the value from our .env
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+config.set_main_option("sqlalchemy.url", settings.database_url_fixed)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

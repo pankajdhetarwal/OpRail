@@ -11,6 +11,14 @@ class Settings(BaseSettings):
     # Database — defaults to SQLite for zero-setup dev; switch to PG in .env
     DATABASE_URL: str = "sqlite:///./oprail.db"
 
+    @property
+    def database_url_fixed(self) -> str:
+        """Fly.io sets postgres:// but SQLAlchemy 2.0 needs postgresql://."""
+        url = self.DATABASE_URL
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql://", 1)
+        return url
+
     # Gemini (optional — templated fallback used when empty)
     GEMINI_API_KEY: str = ""
 

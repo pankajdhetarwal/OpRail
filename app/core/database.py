@@ -8,9 +8,9 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 from app.core.config import settings
 
 # SQLite needs check_same_thread=False; PostgreSQL does not need it
-connect_args = {"check_same_thread": False} if settings.DATABASE_URL.startswith("sqlite") else {}
+connect_args = {"check_same_thread": False} if settings.database_url_fixed.startswith("sqlite") else {}
 
-engine = create_engine(settings.DATABASE_URL, connect_args=connect_args, echo=False)
+engine = create_engine(settings.database_url_fixed, connect_args=connect_args, echo=False)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
