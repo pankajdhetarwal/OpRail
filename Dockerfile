@@ -60,9 +60,9 @@ COPY --from=frontend-builder /build/dist ./static/
 COPY static/favicon.svg ./static/favicon.svg
 COPY static/icons.svg ./static/icons.svg
 
-# Copy startup script
+# Copy startup script and fix Windows line endings (CRLF → LF)
 COPY start.sh .
-RUN chmod +x start.sh
+RUN sed -i 's/\r$//' start.sh && chmod +x start.sh
 
 # Expose the port Fly.io expects
 EXPOSE 8080
